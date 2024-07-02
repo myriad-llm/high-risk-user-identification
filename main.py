@@ -1,0 +1,158 @@
+import argparse
+import os
+
+import torch
+import torch.backends.cudnn as cudnn
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.metrics import precision_recall_fscore_support
+from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from models import TimeLSTM
+from utils.dataset import CallRecords
+
+parser = argparse.ArgumentParser(description='PyTorch CallRecords Training Program')
+parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
+parser.add_argument('--data', default='data', type=str, help='dataset directory')
+parser.add_argument('--batch_size', default=16, type=int, help='batch size')
+parser.add_argument('--epoch', default=100, type=int, help='batch size')
+parser.add_argument('--resume', action='store_true', help='resume from checkpoint')
+args = parser.parse_args()
+
+device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+best_acc = 0
+start_epoch = 0
+
+
+def pad_collate(batch):
+    seq, time_diff, labels = zip(*batch)
+
+    seq_padded = pad_sequence(seq, batch_first=True)
+    time_diff_padded = pad_sequence(time_diff, batch_first=True)
+    labels = torch.stack(labels)
+    return seq_padded, time_diff_padded, labels
+
+
+train_set = CallRecords(root='data', train=True)
+train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, collate_fn=pad_collate)
+
+test_set = CallRecords(root='data', train=False)
+test_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, collate_fn=pad_collate)
+
+assert train_set.features_num == test_set.features_num, 'Train and Test set features are not equal'
+features_num = train_set.features_num
+
+print('==> Building model..')
+net = TimeLSTM(feature=features_num, hidden_size=256, num_classes=2, device=device)
+net = net.to(device)
+
+if device == 'cuda':
+    net = torch.nn.DataParallel(net)
+    cudnn.benchmark = True
+
+if args.resume:
+    # Load checkpoint.
+    print('==> Resuming from checkpoint..')
+    assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
+    checkpoint = torch.load('./checkpoint/ckpt.pth')
+    net.load_state_dict(checkpoint['net'])
+    best_acc = checkpoint['acc']
+    start_epoch = checkpoint['epoch']
+
+loss_fn = nn.CrossEntropyLoss()
+optimizer = optim.Adam(net.parameters(), lr=args.lr)
+
+
+def train(epoch):
+    print('\nEpoch: %d' % epoch)
+    net.train()
+    train_loss = 0
+    all_predictions = []
+    all_labels = []
+
+    pbar = tqdm(enumerate(train_loader), total=len(train_loader), desc='Training')
+    for batch_idx, (seq, time_diff, labels) in pbar:
+        seq, time_diff, labels = seq.to(device), time_diff.to(device), labels.to(device)
+        labels = torch.argmax(labels, dim=1)
+
+        optimizer.zero_grad()
+        outputs = net(seq, time_diff, reverse=False)
+
+        loss = loss_fn(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.item()
+
+        outputs = torch.softmax(outputs, dim=1)
+        all_predictions.extend(torch.argmax(outputs, dim=1).cpu().numpy())
+        all_labels.extend(labels.cpu().numpy())
+
+        precision, recall, f1, _ = precision_recall_fscore_support(
+            all_labels,
+            all_predictions,
+            average='macro',
+            warn_for=tuple(),
+        )
+        pbar.set_postfix({
+            'Loss': '%.3f' % (train_loss / len(train_loader)),
+            'Acc': '%.3f' % precision,
+            'Recall': '%.3f' % recall,
+            'F1': '%.3f%%' % f1,
+        })
+
+
+def test(epoch):
+    global best_acc
+    net.eval()
+    test_loss = 0
+    all_predictions = []
+    all_labels = []
+    precision = .0
+
+    pbar = tqdm(enumerate(test_loader), total=len(test_loader), desc='Testing')
+    with torch.no_grad():
+        for batch_idx, (seq, time_diff, labels) in pbar:
+            seq, time_diff, labels = seq.to(device), time_diff.to(device), labels.to(device)
+            outputs = net(seq, time_diff, reverse=False)
+            labels = torch.argmax(labels, dim=1)
+            loss = loss_fn(outputs, labels)
+
+            test_loss += loss.item()
+
+            outputs = torch.softmax(outputs, dim=1)
+            all_predictions.extend(torch.argmax(outputs, dim=1).cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+            precision, recall, f1, _ = precision_recall_fscore_support(
+                all_labels,
+                all_predictions,
+                average='macro',
+                warn_for=tuple(),
+            )
+            pbar.set_postfix({
+                'Loss': '%.3f' % (test_loss / len(test_loader)),
+                'Acc': '%.3f' % precision,
+                'Recall': '%.3f' % recall,
+                'F1': '%.3f%%' % f1,
+            })
+
+    # Save checkpoint.
+    if precision > best_acc:
+        print('Saving..')
+        state = {
+            'net': net.state_dict(),
+            'acc': precision,
+            'epoch': epoch,
+        }
+        if not os.path.isdir('checkpoint'):
+            os.mkdir('checkpoint')
+        torch.save(state, './checkpoint/ckpt.pth')
+        best_acc = precision
+
+
+for epoch in range(start_epoch, start_epoch + args.epoch):
+    train(epoch)
+    test(epoch)
