@@ -185,8 +185,14 @@ class CallRecords(Dataset):
         self.train = train
         self.valid = valid
 
+        def time_map(x):
+            x / 60
+            return 1 / torch.log(x + torch.e)
+
         if self._check_legacy_exists():
             self.records, self.labels, self.seq_index_with_time_diff = self._load_legacy_data()
+            
+            self.seq_index_with_time_diff = [(seq, time_map(time_diff)) for seq, time_diff in self.seq_index_with_time_diff]
             return
 
         if not self._check_exists():
@@ -205,15 +211,11 @@ class CallRecords(Dataset):
         )
 
         self.records, self.labels, self.seq_index_with_time_diff = data if self.train else val
+        self.seq_index_with_time_diff = [(seq, time_map(time_diff)) for seq, time_diff in self.seq_index_with_time_diff]
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         seq_index, time_diff = self.seq_index_with_time_diff[index]
         seq, label = self.records[seq_index], self.labels[index] if self.labels is not None else None
-
-        def time_map(x):
-            return 1 / torch.log(x + torch.e)
-
-        time_diff = time_map(time_diff)
 
         return seq, time_diff, label
 
@@ -308,7 +310,7 @@ class CallRecords(Dataset):
 
         remap_column_group = {
             'area_code': self.area_code_columns,
-            'city': self.city_columns,
+            # 'city': self.city_columns,
             'province': self.province_columns,
             'a_product_id': self.a_product_id_columns,
         }
@@ -328,6 +330,10 @@ class CallRecords(Dataset):
 
         train_records_df = remap_data(train_records_df, remap_column_group, value_dicts)
         val_records_df = remap_data(val_records_df, remap_column_group, value_dicts)
+
+        # TODO
+        train_records_df.drop(columns=self.city_columns, axis=1, inplace=True)
+        val_records_df.drop(columns=self.city_columns, axis=1, inplace=True)
 
         apply_cols = {
             col: len(value_dicts[group])
