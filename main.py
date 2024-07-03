@@ -40,7 +40,7 @@ train_set = CallRecords(root='data', train=True)
 train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, collate_fn=pad_collate)
 
 test_set = CallRecords(root='data', train=False)
-test_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, collate_fn=pad_collate)
+test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=True, collate_fn=pad_collate)
 
 assert train_set.features_num == test_set.features_num, 'Train and Test set features are not equal'
 features_num = train_set.features_num
