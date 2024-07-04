@@ -12,3 +12,9 @@ CUDA_VISIBLE_DEVICES=2 python main.py --lr=0.001 --data="./data" --batch_size=12
 ```
 
 The checkpoint will be saved at `./checkpoint/` directory.
+
+```shell
+python out.py --ckpt="./checkpoint/ckpt.pth" --data="./data" --batch_size=128
+```
+
+The output will be saved at `./res/` directory.
