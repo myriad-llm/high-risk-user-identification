@@ -21,7 +21,6 @@ parser.add_argument('--epoch', default=100, type=int, help='batch size')
 parser.add_argument('--resume', action='store_true', help='resume from checkpoint')
 args = parser.parse_args()
 
-
 device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
 best_f1 = 0
 start_epoch = 0
@@ -47,7 +46,7 @@ features_num = train_set.features_num
 
 print('==> Building model..')
 print(f'Feature_num: {features_num}')
-net = BiLSTMWithAttention(input_size=features_num,hidden_size=128,num_classes=2,attention_size=32,num_layer=2,dropout_rate=0.5)
+net = BiLSTMWithAttention(input_size=features_num, hidden_size=128, num_classes=2, attention_size=32, num_layer=2, dropout_rate=0.5)
 net = net.to(device)
 
 if device == 'cuda':
@@ -68,13 +67,12 @@ optimizer = optim.Adam(net.parameters(), lr=args.lr)
 
 
 def train(epoch):
-    # print('\nEpoch: %d' % epoch)
     net.train()
     train_loss = 0
     all_predictions = []
     all_labels = []
 
-    for seq, time_diff, labels in train_loader:
+    for seq, time_diff, labels in tqdm(train_loader, desc='Training', leave=False):
         seq, time_diff, labels = seq.to(device), time_diff.to(device), labels.to(device)
         labels = torch.argmax(labels, dim=1)
 
@@ -101,17 +99,15 @@ def train(epoch):
     return train_loss / len(train_loader), precision, recall, f1, acc
 
 
-
 def test(epoch):
     global best_f1
     net.eval()
     test_loss = 0
     all_predictions = []
     all_labels = []
-    precision = .0
 
     with torch.no_grad():
-        for seq, time_diff, labels in test_loader:
+        for seq, time_diff, labels in tqdm(test_loader, desc='Testing', leave=False):
             seq, time_diff, labels = seq.to(device), time_diff.to(device), labels.to(device)
             outputs = net(seq)
             labels = torch.argmax(labels, dim=1)
@@ -130,32 +126,35 @@ def test(epoch):
         warn_for=tuple(),
     )
     acc = sum([1 for i, j in zip(all_predictions, all_labels) if i == j]) / len(all_predictions)
-        
-
-    # Save checkpoint.
-    if f1 > best_f1:
-        print('Saving..')
-        state = {
-            'net': net.state_dict(),
-            'f1': f1,
-            'epoch': epoch,
-        }
-        if not os.path.isdir('checkpoint'):
-            os.mkdir('checkpoint')
-        torch.save(net.state_dict(), './checkpoint/ckpt.pth')
-        best_f1 = f1
-    
     return test_loss / len(test_loader), precision, recall, f1, acc
 
 
 pbar = tqdm(range(start_epoch, start_epoch + args.epoch), total=args.epoch)
 for epoch in pbar:
-    # train(epoch)
-    # test(epoch)
     train_loss, train_precision, train_recall, train_f1, train_acc = train(epoch)
     test_loss, test_precision, test_recall, test_f1, test_acc = test(epoch)
-    pbar.write(f'Epoch: {epoch + 1} / {args.epoch}, Loss: {train_loss:.4f} / {test_loss:.4f}, ' +
-            f'Prec: {train_precision:.4f} / {test_precision:.4f}, ' +
-            f'Recall: {train_recall:.4f} / {test_recall:.4f}, ' +
-            f'F1: {train_f1:.4f} / {test_f1:.4f}, ' +
-            f'Acc: {train_acc:.4f} / {test_acc:.4f}')
+
+    info = f'''
+Epoch: {epoch + 1} / {args.epoch}, \
+Loss: {train_loss:.4f} / {test_loss:.4f}, \
+Prec: {train_precision:.4f} / {test_precision:.4f}, \
+Recall: {train_recall:.4f} / {test_recall:.4f}, \
+F1: {train_f1:.4f} / {test_f1:.4f}, \
+Acc: {train_acc:.4f} / {test_acc:.4f}'''
+
+    # Save checkpoint.
+    if test_f1 > best_f1:
+        if not os.path.isdir('checkpoint'):
+            os.mkdir('checkpoint')
+
+        state = {
+            'net': net.state_dict(),
+            'f1': test_f1,
+            'epoch': epoch,
+        }
+        torch.save(state, './checkpoint/ckpt.pth')
+
+        best_f1 = test_f1
+        info += ' [Saved]'
+
+    pbar.write(info)
