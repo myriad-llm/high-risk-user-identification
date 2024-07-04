@@ -10,7 +10,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from models import BiLSTMWithAttention
+from models import BiLSTMWithImprovedAttention
 from utils.dataset import CallRecords
 
 parser = argparse.ArgumentParser(description='PyTorch CallRecords Training Program')
@@ -46,7 +46,7 @@ features_num = train_set.features_num
 
 print('==> Building model..')
 print(f'Feature_num: {features_num}')
-net = BiLSTMWithAttention(input_size=features_num, hidden_size=128, num_classes=2, attention_size=32, num_layer=2, dropout_rate=0.5)
+net = BiLSTMWithImprovedAttention(input_size=features_num, hidden_size=128, num_classes=2, attention_size=32, num_layer=2, dropout_rate=0.5, num_heads=4)
 net = net.to(device)
 
 if device == 'cuda':
