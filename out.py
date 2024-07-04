@@ -48,7 +48,7 @@ if device == 'cuda':
     cudnn.benchmark = True
 
 temp = torch.load(args.ckpt)
-net.load_state_dict(temp)
+net.load_state_dict(temp['net'])
 net.to(device)
 
 def pred(epoch):
