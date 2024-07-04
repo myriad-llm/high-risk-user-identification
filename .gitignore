@@ -338,3 +338,4 @@ cython_debug/
 
 data/
 checkpoint/
+res/
