@@ -35,11 +35,11 @@ def pad_collate(batch):
     return seq_padded, time_diff_padded, labels
 
 
-train_set = CallRecords(root='data', train=True)
+train_set = CallRecords(root=args.data, train=True)
 train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, collate_fn=pad_collate)
 
-test_set = CallRecords(root='data', train=False)
-test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=True, collate_fn=pad_collate)
+test_set = CallRecords(root=args.data, train=False)
+test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False, collate_fn=pad_collate)
 
 assert train_set.features_num == test_set.features_num, 'Train and Test set features are not equal'
 features_num = train_set.features_num
@@ -59,14 +59,14 @@ if args.resume:
     assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
     checkpoint = torch.load('./checkpoint/ckpt.pth')
     net.load_state_dict(checkpoint['net'])
-    best_f1 = checkpoint['acc']
+    best_f1 = checkpoint['f1']
     start_epoch = checkpoint['epoch']
 
 loss_fn = nn.CrossEntropyLoss()
 optimizer = optim.Adam(net.parameters(), lr=args.lr)
 
 
-def train(epoch):
+def train():
     net.train()
     train_loss = 0
     all_predictions = []
@@ -99,8 +99,7 @@ def train(epoch):
     return train_loss / len(train_loader), precision, recall, f1, acc
 
 
-def test(epoch):
-    global best_f1
+def test():
     net.eval()
     test_loss = 0
     all_predictions = []
@@ -131,8 +130,8 @@ def test(epoch):
 
 pbar = tqdm(range(start_epoch, start_epoch + args.epoch), total=args.epoch)
 for epoch in pbar:
-    train_loss, train_precision, train_recall, train_f1, train_acc = train(epoch)
-    test_loss, test_precision, test_recall, test_f1, test_acc = test(epoch)
+    train_loss, train_precision, train_recall, train_f1, train_acc = train()
+    test_loss, test_precision, test_recall, test_f1, test_acc = test()
 
     info = f'''
 Epoch: {epoch + 1} / {args.epoch}, \
