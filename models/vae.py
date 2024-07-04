@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class VAE(nn.Module):
@@ -18,14 +17,14 @@ class VAE(nn.Module):
     def encode(self, x):
         x = torch.flatten(x, start_dim=1)
         x = self.en_fc1(x)
-        x = F.relu(x)
+        x = torch.relu(x)
         return self.en_fc2_mu(x), self.en_fc2_sigma(x)
 
     def decode(self, z):
         z = self.de_fc3(z)
-        z = F.relu(z)
+        z = torch.relu(z)
         z = self.de_fc4(z)
-        z = F.sigmoid(z)
+        z = torch.sigmoid(z)
         return z
 
     def reparameterize(self, mu, sigma):

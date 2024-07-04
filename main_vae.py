@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 import torch
 import torch.nn.functional as F
@@ -20,7 +21,7 @@ parser.add_argument('--resume', action='store_true', help='resume from checkpoin
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
-best_loss = 0
+best_loss = sys.float_info.max
 start_epoch = 0
 
 train_set = CallRecords(root=args.data, train=True, non_seq=True)
@@ -74,7 +75,7 @@ def train():
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item()
+        total_loss += loss.item() / len(records)
 
     return total_loss / len(train_loader)
 
@@ -86,7 +87,7 @@ for epoch in pbar:
     info = f'''Epoch: {epoch + 1} / {args.epoch}, Loss: {loss:.4f}'''
 
     # Save checkpoint.
-    if loss > best_loss:
+    if loss < best_loss:
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
 
