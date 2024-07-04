@@ -2,7 +2,7 @@ import os
 import pickle as pkl
 from collections import defaultdict
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -177,6 +177,7 @@ class CallRecords(Dataset):
             root: Union[str, Path],
             train: bool = True,
             valid: bool = False,
+            non_seq: bool = False,
     ) -> None:
         if isinstance(root, str):
             root = os.path.expanduser(root)
@@ -184,6 +185,7 @@ class CallRecords(Dataset):
 
         self.train = train
         self.valid = valid
+        self.non_seq = non_seq
 
         def time_map(x):
             x / 60
@@ -191,7 +193,7 @@ class CallRecords(Dataset):
 
         if self._check_legacy_exists():
             self.records, self.labels, self.seq_index_with_time_diff = self._load_legacy_data()
-            
+
             self.seq_index_with_time_diff = [(seq, time_map(time_diff)) for seq, time_diff in self.seq_index_with_time_diff]
             return
 
@@ -213,13 +215,22 @@ class CallRecords(Dataset):
         self.records, self.labels, self.seq_index_with_time_diff = data if self.train else val
         self.seq_index_with_time_diff = [(seq, time_map(time_diff)) for seq, time_diff in self.seq_index_with_time_diff]
 
-    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+    def __getitem__(
+            self,
+            index: int,
+    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]] | torch.Tensor:
+        if self.non_seq:
+            return self.records[index]
+
         seq_index, time_diff = self.seq_index_with_time_diff[index]
         seq, label = self.records[seq_index], self.labels[index] if self.labels is not None else None
 
         return seq, time_diff, label
 
     def __len__(self) -> int:
+        if self.non_seq:
+            return len(self.records)
+
         return len(self.seq_index_with_time_diff)
 
     @property
