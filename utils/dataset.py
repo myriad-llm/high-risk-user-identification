@@ -202,11 +202,11 @@ class CallRecords(Dataset):
         data_records, data_labels, data_seq_index_with_time_diff = data
         (
             train_labels_and_seq_index_with_time_diff,
-            val_labels_and_seq_index_with_time_diff,
+            test_labels_and_seq_index_with_time_diff,
         ) = split_data(data_labels, data_seq_index_with_time_diff, 0.8)
 
         self._save_legacy_data(
-            (data_records, train_labels_and_seq_index_with_time_diff, val_labels_and_seq_index_with_time_diff),
+            (data_records, train_labels_and_seq_index_with_time_diff, test_labels_and_seq_index_with_time_diff),
             val,
         )
 
