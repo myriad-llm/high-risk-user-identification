@@ -10,7 +10,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from models import BiLSTMWithAttention
+from models import BiLSTMWithImprovedAttention
 from utils.dataset import CallRecords
 import pandas as pd
 import time
@@ -23,8 +23,6 @@ args = parser.parse_args()
 
 
 device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
-best_f1 = 0
-start_epoch = 0
 
 def pad_collate(batch):
     seq, time_diff, labels = zip(*batch)
@@ -43,7 +41,7 @@ features_num = valid_set.features_num
 
 print('==> Building model..')
 print(f'Feature_num: {features_num}')
-net = BiLSTMWithAttention(input_size=features_num,hidden_size=128,num_classes=2,attention_size=32,num_layer=2,dropout_rate=0.5)
+net = BiLSTMWithImprovedAttention(input_size=features_num,hidden_size=128,num_classes=2,attention_size=32,num_layer=2,dropout_rate=0.5, num_heads=4)
 
 if device == 'cuda':
     net = torch.nn.DataParallel(net)
@@ -69,7 +67,7 @@ def pred(epoch):
 
     pred = torch.tensor(all_predictions)
 
-    valid_df = pd.read_csv('./data/CallRecords/raw/valid_msisdn.csv.gz')
+    valid_df = pd.read_csv('./data/CallRecords/raw/validationSet_res.csv')
     valid_seq_index_with_time_diff = valid_set.seq_index_with_time_diff
     msisdns = [valid_df['msisdn'][valid_seq_index_with_time_diff[i][0][0]] for i in range(len(valid_seq_index_with_time_diff))]
     msisdns = pd.Series(msisdns)
