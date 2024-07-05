@@ -1,5 +1,9 @@
 seed_everything: 123
 trainer:
+  logger:
+    class_path: lightning.pytorch.loggers.WandbLogger
+    init_args:
+      project: "vae"
   max_epochs: 100
   default_root_dir: ./lightning_logs/vae
 model:

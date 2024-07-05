@@ -14,6 +14,7 @@ def loss_fn(recon_x, x, mu, log_var):
 class VAE(LightningModule):
     def __init__(self, in_channels: int, latent_dim: int):
         super().__init__()
+        self.save_hyperparameters()
 
         self.latent_dim = latent_dim
 

@@ -1,21 +1,27 @@
-import lightning as L
-from torchmetrics import Precision, Recall, F1Score, Accuracy
-import torch
-from torch.nn import functional as F
-import torch.nn as nn
 import os
 
+import lightning as L
+import torch
+import torch.nn as nn
+from torch.nn import functional as F
+
 from .vae import VAE
+
 
 class LSTM_VAE(L.LightningModule):
     def __init__(self, feature: int, hidden_size: int, dim_encoded: int, num_layers: int, num_classes: int, vae_ckpt_path: str = None):
         super().__init__()
+
+        self.save_hyperparameters()
+
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.dim_encoded = dim_encoded
+
         if vae_ckpt_path is not None:
             assert os.path.exists(vae_ckpt_path), "VAE checkpoint path does not exist"
         self.vae_pretrained = True if vae_ckpt_path is not None else False
+
         if self.vae_pretrained:
             self.vae = VAE.load_from_checkpoint(vae_ckpt_path)
             self.vae.freeze()
@@ -59,18 +65,16 @@ class LSTM_VAE(L.LightningModule):
         loss = self.loss_fn(vae_pred, seqs, mu, sigma, outputs, labels)
         self.log('test_loss', loss)
         return loss
-    
+
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
-    
+
     def loss_fn(self, recon_x, x, mu, log_var, outputs, labels, alpha=0.5):
-        loss = 0
-        ce_loss = F.cross_entropy(outputs, labels)
-        if self.vae_ckpt is not None:
+        loss = F.cross_entropy(outputs, labels)
+        if self.vae_pretrained:
             bce = F.binary_cross_entropy(recon_x, x.view(-1, x.shape[2]), reduction='sum')
             kld = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
             vae_loss = (bce + kld) / x.shape[1]
-            loss = alpha * vae_loss +  (1-alpha)* ce_loss
-        loss = ce_loss
+            loss = alpha * vae_loss + (1 - alpha) * loss
         return loss

@@ -7,6 +7,8 @@ from torch import nn
 class LSTM(L.LightningModule):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
         super().__init__()
+        self.save_hyperparameters()
+
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
