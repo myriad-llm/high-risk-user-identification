@@ -1,7 +1,7 @@
+import lightning as L
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-from lightning import LightningModule
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 
 
@@ -11,7 +11,7 @@ def loss_fn(recon_x, x, mu, log_var):
     return bce + kld
 
 
-class VAE(LightningModule):
+class VAE(L.LightningModule):
     def __init__(self, in_channels: int, latent_dim: int):
         super().__init__()
         self.save_hyperparameters()
@@ -60,14 +60,6 @@ class VAE(LightningModule):
         loss = loss_fn(pred, batch, mu, sigma)
 
         self.log("val_loss", loss.item() / batch.size(0), sync_dist=True)
-
-        return loss
-
-    def test_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        pred, mu, sigma = self(batch)
-        loss = loss_fn(pred, batch, mu, sigma)
-
-        self.log("test_loss", loss.item() / batch.size(0), sync_dist=True)
 
         return loss
 

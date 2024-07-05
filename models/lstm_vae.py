@@ -3,6 +3,7 @@ import os
 import lightning as L
 import torch
 import torch.nn as nn
+from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch.nn import functional as F
 
 from .vae import VAE
@@ -31,11 +32,6 @@ class LSTM_VAE(L.LightningModule):
         self.lstm = nn.LSTM(dim_encoded, hidden_size, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_size, num_classes)
 
-        # self.precision = Precision(average='macro', num_classes=num_classes)
-        # self.recall = Recall(average='macro', num_classes=num_classes)
-        # self.f1 = F1Score(average='macro', num_classes=num_classes)
-        # self.accuracy = Accuracy()
-
     def forward(self, x):
         b, seq_len, f_dim = x.shape
 
@@ -50,7 +46,7 @@ class LSTM_VAE(L.LightningModule):
         out = self.fc(out[:, -1, :])
         return out, vae_pred, mu, sigma
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx) -> STEP_OUTPUT:
         seqs, time_diff, labels = batch
         outputs, vae_pred, mu, sigma = self(seqs)
         labels = torch.argmax(labels, dim=1)
@@ -58,15 +54,15 @@ class LSTM_VAE(L.LightningModule):
         self.log('train_loss', loss.item() / batch.size(0), sync_dist=True)
         return loss
 
-    def test_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx) -> STEP_OUTPUT:
         seqs, time_diff, labels = batch
         outputs, vae_pred, mu, sigma = self(seqs)
         labels = torch.argmax(labels, dim=1)
         loss = self.loss_fn(vae_pred, seqs, mu, sigma, outputs, labels)
-        self.log('test_loss', loss.item() / batch.size(0), sync_dist=True)
+        self.log('val_loss', loss.item() / batch.size(0), sync_dist=True)
         return loss
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
 

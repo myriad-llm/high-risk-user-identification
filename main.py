@@ -2,7 +2,7 @@ from lightning.pytorch.cli import LightningCLI
 from lightning.pytorch.loggers import WandbLogger
 
 from models import LSTM, VAE, LSTM_VAE
-from datasets import CallRecordsDataModule
+from datasets import CallRecordsDataModule, CallRecords4VAEDataModule
 
 
 def cli_main():

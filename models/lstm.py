@@ -1,7 +1,8 @@
 import lightning as L
 import torch
 import torch.nn.functional as F
-from torch import nn
+import torch.nn as nn
+from lightning.pytorch.utilities.types import STEP_OUTPUT
 
 
 class LSTM(L.LightningModule):
@@ -21,7 +22,7 @@ class LSTM(L.LightningModule):
         out = self.fc(out[:, -1, :])
         return out
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx) -> STEP_OUTPUT:
         seq, _, labels = batch
         labels = torch.argmax(labels, dim=1)
 
@@ -32,7 +33,7 @@ class LSTM(L.LightningModule):
 
         return loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx) -> STEP_OUTPUT:
         seq, _, labels = batch
         labels = torch.argmax(labels, dim=1)
 
@@ -43,18 +44,7 @@ class LSTM(L.LightningModule):
 
         return loss
 
-    def test_step(self, batch, batch_idx):
-        seq, _, labels = batch
-        labels = torch.argmax(labels, dim=1)
-
-        outputs = self(seq)
-        loss = F.cross_entropy(outputs, labels)
-
-        self.log("test_loss", loss.item() / batch.size(0), sync_dist=True)
-
-        return loss
-
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
 
