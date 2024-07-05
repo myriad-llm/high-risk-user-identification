@@ -47,7 +47,7 @@ class VAE(LightningModule):
         return self.decode(z), mu, sigma
 
     def training_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        pred, mu, sigma = self.vae(batch)
+        pred, mu, sigma = self(batch)
         loss = loss_fn(pred, batch, mu, sigma)
 
         self.log_dict({"train_loss": loss.item()})
@@ -55,7 +55,7 @@ class VAE(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        pred, mu, sigma = self.vae(batch)
+        pred, mu, sigma = self(batch)
         loss = loss_fn(pred, batch, mu, sigma)
 
         self.log_dict({"val_loss": loss.item()})
@@ -63,7 +63,7 @@ class VAE(LightningModule):
         return loss
 
     def test_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        pred, mu, sigma = self.vae(batch)
+        pred, mu, sigma = self(batch)
         loss = loss_fn(pred, batch, mu, sigma)
 
         self.log_dict({"test_loss": loss.item()})

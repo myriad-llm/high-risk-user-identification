@@ -339,3 +339,5 @@ cython_debug/
 data/
 checkpoint/
 res/
+lightning_logs/
+pre_trained_ckpt/

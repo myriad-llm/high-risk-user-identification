@@ -23,7 +23,7 @@ class LSTM(L.LightningModule):
         seq, _, labels = batch
         labels = torch.argmax(labels, dim=1)
 
-        outputs = self.lstm(seq)
+        outputs = self(seq)
         loss = F.cross_entropy(outputs, labels)
 
         self.log_dict({"train_loss": loss.item()})
@@ -34,7 +34,7 @@ class LSTM(L.LightningModule):
         seq, _, labels = batch
         labels = torch.argmax(labels, dim=1)
 
-        outputs = self.lstm(seq)
+        outputs = self(seq)
         loss = F.cross_entropy(outputs, labels)
 
         self.log_dict({"val_loss": loss.item()})
@@ -45,7 +45,7 @@ class LSTM(L.LightningModule):
         seq, _, labels = batch
         labels = torch.argmax(labels, dim=1)
 
-        outputs = self.lstm(seq)
+        outputs = self(seq)
         loss = F.cross_entropy(outputs, labels)
 
         self.log_dict({"test_loss": loss.item()})
@@ -58,4 +58,4 @@ class LSTM(L.LightningModule):
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         seq, _, _ = batch
-        return self.lstm(seq)
+        return self(seq)
