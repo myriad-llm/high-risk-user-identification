@@ -55,7 +55,7 @@ class LSTM_VAE(L.LightningModule):
         outputs, vae_pred, mu, sigma = self(seqs)
         labels = torch.argmax(labels, dim=1)
         loss = self.loss_fn(vae_pred, seqs, mu, sigma, outputs, labels)
-        self.log('train_loss', loss)
+        self.log('train_loss', loss.item() / batch.size(0), sync_dist=True)
         return loss
 
     def test_step(self, batch, batch_idx):
@@ -63,7 +63,7 @@ class LSTM_VAE(L.LightningModule):
         outputs, vae_pred, mu, sigma = self(seqs)
         labels = torch.argmax(labels, dim=1)
         loss = self.loss_fn(vae_pred, seqs, mu, sigma, outputs, labels)
-        self.log('test_loss', loss)
+        self.log('test_loss', loss.item() / batch.size(0), sync_dist=True)
         return loss
 
     def configure_optimizers(self):

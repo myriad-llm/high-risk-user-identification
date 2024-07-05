@@ -28,7 +28,7 @@ class LSTM(L.LightningModule):
         outputs = self(seq)
         loss = F.cross_entropy(outputs, labels)
 
-        self.log_dict({"train_loss": loss.item()})
+        self.log("train_loss", loss.item() / batch.size(0), sync_dist=True)
 
         return loss
 
@@ -39,7 +39,7 @@ class LSTM(L.LightningModule):
         outputs = self(seq)
         loss = F.cross_entropy(outputs, labels)
 
-        self.log_dict({"val_loss": loss.item()})
+        self.log("val_loss", loss.item() / batch.size(0), sync_dist=True)
 
         return loss
 
@@ -50,7 +50,7 @@ class LSTM(L.LightningModule):
         outputs = self(seq)
         loss = F.cross_entropy(outputs, labels)
 
-        self.log_dict({"test_loss": loss.item()})
+        self.log("test_loss", loss.item() / batch.size(0), sync_dist=True)
 
         return loss
 

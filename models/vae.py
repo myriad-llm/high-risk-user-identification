@@ -51,7 +51,7 @@ class VAE(LightningModule):
         pred, mu, sigma = self(batch)
         loss = loss_fn(pred, batch, mu, sigma)
 
-        self.log_dict({"train_loss": loss.item()})
+        self.log("train_loss", loss.item() / batch.size(0), sync_dist=True)
 
         return loss
 
@@ -59,7 +59,7 @@ class VAE(LightningModule):
         pred, mu, sigma = self(batch)
         loss = loss_fn(pred, batch, mu, sigma)
 
-        self.log_dict({"val_loss": loss.item()})
+        self.log("val_loss", loss.item() / batch.size(0), sync_dist=True)
 
         return loss
 
@@ -67,7 +67,7 @@ class VAE(LightningModule):
         pred, mu, sigma = self(batch)
         loss = loss_fn(pred, batch, mu, sigma)
 
-        self.log_dict({"test_loss": loss.item()})
+        self.log("test_loss", loss.item() / batch.size(0), sync_dist=True)
 
         return loss
 
