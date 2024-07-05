@@ -25,10 +25,10 @@ class CallRecordsDataModule(L.LightningDataModule):
         return self.full.features_num
 
     def train_dataloader(self):
-        return DataLoader(self.train, batch_size=self.batch_size, shuffle=True, collate_fn=pad_collate, num_workers=2)
+        return DataLoader(self.train, batch_size=self.batch_size, shuffle=True, collate_fn=pad_collate)
 
     def val_dataloader(self):
-        return DataLoader(self.val, batch_size=self.batch_size, shuffle=False, collate_fn=pad_collate, num_workers=2)
+        return DataLoader(self.val, batch_size=self.batch_size, shuffle=False, collate_fn=pad_collate)
 
     def test_dataloader(self):
         return DataLoader(self.test, batch_size=self.batch_size, shuffle=False, collate_fn=pad_collate)
