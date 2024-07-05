@@ -1,20 +1,30 @@
 import lightning as L
 import torch
+import torch.nn.functional as F
 from torch import nn
 
 
-class LitLSTM(L.LightningModule):
-    def __init__(self, lstm):
-        super(LitLSTM, self).__init__()
-        self.lstm = lstm
-        self.loss_fn = nn.CrossEntropyLoss()
+class LSTM(L.LightningModule):
+    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+        super().__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, num_classes)
+
+    def forward(self, x):
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+        out, _ = self.lstm(x, (h0, c0))
+        out = self.fc(out[:, -1, :])
+        return out
 
     def training_step(self, batch, batch_idx):
         seq, _, labels = batch
         labels = torch.argmax(labels, dim=1)
 
         outputs = self.lstm(seq)
-        loss = self.loss_fn(outputs, labels)
+        loss = F.cross_entropy(outputs, labels)
 
         self.log_dict({"train_loss": loss.item()})
 
@@ -25,7 +35,7 @@ class LitLSTM(L.LightningModule):
         labels = torch.argmax(labels, dim=1)
 
         outputs = self.lstm(seq)
-        loss = self.loss_fn(outputs, labels)
+        loss = F.cross_entropy(outputs, labels)
 
         self.log_dict({"val_loss": loss.item()})
 
@@ -36,7 +46,7 @@ class LitLSTM(L.LightningModule):
         labels = torch.argmax(labels, dim=1)
 
         outputs = self.lstm(seq)
-        loss = self.loss_fn(outputs, labels)
+        loss = F.cross_entropy(outputs, labels)
 
         self.log_dict({"test_loss": loss.item()})
 
