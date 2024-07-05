@@ -1,5 +1,5 @@
 from lightning.pytorch.cli import LightningCLI
-from models import LSTM, VAE
+from models import LSTM, VAE, LSTM_VAE
 from datasets import CallRecordsDataModule
 
 
