@@ -17,13 +17,11 @@ class CallRecords(Dataset):
     ]
 
     manifests = [
-        "records.pt",
-        "train_labels.pt",
-        "train_seq_index_with_time_diff.pkl",
-        "test_labels.pt",
-        "test_seq_index_with_time_diff.pkl",
-        "val_records.pt",
-        "val_seq_index_with_time_diff.pkl",
+        "data_records.pt",
+        "data_labels.pt",
+        "data_seq_index_with_time_diff.pkl",
+        "predict_records.pt",
+        "predict_seq_index_with_time_diff.pkl",
     ]
 
     time_format: Dict[str, str] = {
@@ -62,17 +60,14 @@ class CallRecords(Dataset):
     def __init__(
             self,
             root: Union[str, Path],
-            train: bool = True,
-            valid: bool = False,
+            predict: bool = False,
             non_seq: bool = False,
-            ratio: float = 0.9,
     ) -> None:
         if isinstance(root, str):
             root = os.path.expanduser(root)
         self.root = root
 
-        self.train = train
-        self.valid = valid
+        self.predict = predict
         self.non_seq = non_seq
 
         def time_map(x):
@@ -88,19 +83,11 @@ class CallRecords(Dataset):
         if not self._check_exists():
             raise RuntimeError("Dataset not found.")
 
-        data, val = self._load_data()
-        data_records, data_labels, data_seq_index_with_time_diff = data
-        (
-            train_labels_and_seq_index_with_time_diff,
-            test_labels_and_seq_index_with_time_diff,
-        ) = split_data(data_labels, data_seq_index_with_time_diff, ratio)
+        data, pred = self._load_data()
 
-        self._save_legacy_data(
-            (data_records, train_labels_and_seq_index_with_time_diff, test_labels_and_seq_index_with_time_diff),
-            val,
-        )
+        self._save_legacy_data(data, pred)
 
-        self.records, self.labels, self.seq_index_with_time_diff = data if self.train else val
+        self.records, self.labels, self.seq_index_with_time_diff = pred if self.predict else data
         self.seq_index_with_time_diff = [(seq, time_map(time_diff)) for seq, time_diff in self.seq_index_with_time_diff]
 
     def __getitem__(
@@ -143,10 +130,9 @@ class CallRecords(Dataset):
         )
 
     def _load_legacy_data(self) -> Tuple[torch.Tensor, Optional[torch.Tensor], List[Tuple[List[int], torch.Tensor]]]:
-        records_file = 'val_records.pt' if self.valid else 'records.pt'
-        labels_file = None if self.valid else 'train_labels.pt' if self.train else 'test_labels.pt'
-        seq_file = 'val_seq_index_with_time_diff.pkl' if self.valid \
-            else 'train_seq_index_with_time_diff.pkl' if self.train else 'test_seq_index_with_time_diff.pkl'
+        records_file = 'predict_records.pt' if self.predict else 'data_records.pt'
+        labels_file = None if self.predict else 'data_labels.pt'
+        seq_file = 'predict_seq_index_with_time_diff.pkl' if self.predict else 'data_seq_index_with_time_diff.pkl'
 
         records = torch.load(os.path.join(self.processed_folder, records_file))
 
@@ -161,12 +147,8 @@ class CallRecords(Dataset):
 
     def _save_legacy_data(
             self,
-            data: Tuple[
-                torch.Tensor,
-                Tuple[torch.Tensor, List[Tuple[List[int], torch.Tensor]]],
-                Tuple[torch.Tensor, List[Tuple[List[int], torch.Tensor]]],
-            ],
-            val: Tuple[torch.Tensor, None, List[Tuple[List[int], torch.Tensor]]],
+            data: Tuple[torch.Tensor, torch.Tensor, List[Tuple[List[int], torch.Tensor]]],
+            pred: Tuple[torch.Tensor, None, List[Tuple[List[int], torch.Tensor]]],
     ) -> None:
         if not os.path.exists(self.processed_folder):
             os.makedirs(self.processed_folder)
@@ -179,20 +161,14 @@ class CallRecords(Dataset):
             with open(os.path.join(self.processed_folder, filename), 'wb') as f:
                 pkl.dump(d, f, pkl.HIGHEST_PROTOCOL)
 
-        (
-            data_records,
-            (train_labels, train_seq_index_with_time_diff),
-            (test_labels, test_seq_index_with_time_diff),
-        ) = data
-        (val_records, _, val_seq_index_with_time_diff) = val
+        (data_records, data_labels, data_seq_index_with_time_diff) = data
+        (pred_records, _, pred_seq_index_with_time_diff) = pred
 
-        save_tensor(data_records, 'records.pt')
-        save_tensor(train_labels, 'train_labels.pt')
-        save_pickle(train_seq_index_with_time_diff, 'train_seq_index_with_time_diff.pkl')
-        save_tensor(test_labels, 'test_labels.pt')
-        save_pickle(test_seq_index_with_time_diff, 'test_seq_index_with_time_diff.pkl')
-        save_tensor(val_records, 'val_records.pt')
-        save_pickle(val_seq_index_with_time_diff, 'val_seq_index_with_time_diff.pkl')
+        save_tensor(data_records, 'data_records.pt')
+        save_tensor(data_labels, 'data_labels.pt')
+        save_pickle(data_seq_index_with_time_diff, 'data_seq_index_with_time_diff.pkl')
+        save_tensor(pred_records, 'predict_records.pt')
+        save_pickle(pred_seq_index_with_time_diff, 'predict_seq_index_with_time_diff.pkl')
 
     def _check_exists(self) -> bool:
         return all(

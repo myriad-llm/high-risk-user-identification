@@ -1,122 +1,48 @@
 import lightning as L
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Dataset, random_split
 
 from datasets import CallRecords
 from utils import pad_collate
 
 
 class CallRecordsDataModule(L.LightningDataModule):
-    def __init__(self, data_dir: str, batch_size: int, seed: int, ratio: float = 0.9, num_workers: int = 2):
+    def __init__(self, data_dir: str, batch_size: int, seed: int, non_seq: bool = False, num_workers: int = 2):
         super().__init__()
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.seed = seed
+        self.non_seq = non_seq
         self.num_workers = num_workers
 
-        self.full = CallRecords(root=self.data_dir, train=True, ratio=ratio)
-        self.train, self.val = random_split(
-            self.full, [0.9, 0.1], generator=torch.Generator().manual_seed(self.seed)
+        self.full = CallRecords(root=self.data_dir, predict=False, non_seq=non_seq)
+        self.train, self.val, self.test = random_split(
+            self.full, [0.8, 0.1, 0.1], generator=torch.Generator().manual_seed(self.seed)
         )
-        self.test = CallRecords(root=self.data_dir, train=False, ratio=ratio)
-        self.pred = CallRecords(root=self.data_dir, valid=True, ratio=ratio)
+        self.pred = CallRecords(root=self.data_dir, predict=True)
 
     @property
     def feature_dim(self):
         return self.full.features_num
 
-    def train_dataloader(self):
+    def dataloader(self, dataset: Dataset, shuffle: bool = False):
         return DataLoader(
-            self.train,
+            dataset,
             batch_size=self.batch_size,
-            shuffle=True,
-            collate_fn=pad_collate,
+            shuffle=shuffle,
+            collate_fn=None if self.non_seq else pad_collate,
             num_workers=self.num_workers,
             persistent_workers=True,
         )
-
-    def val_dataloader(self):
-        return DataLoader(
-            self.val,
-            batch_size=self.batch_size,
-            shuffle=False,
-            collate_fn=pad_collate,
-            num_workers=self.num_workers,
-            persistent_workers=True,
-        )
-
-    def test_dataloader(self):
-        return DataLoader(
-            self.test,
-            batch_size=self.batch_size,
-            shuffle=False,
-            collate_fn=pad_collate,
-            num_workers=self.num_workers,
-            persistent_workers=True,
-        )
-
-    def predict_dataloader(self):
-        return DataLoader(
-            self.pred,
-            batch_size=self.batch_size,
-            shuffle=False,
-            collate_fn=pad_collate,
-            num_workers=self.num_workers,
-            persistent_workers=True,
-        )
-
-
-class CallRecordsNonSeqDataModule(L.LightningDataModule):
-    def __init__(self, data_dir: str, batch_size: int, seed: int, ratio: float = 0.9, num_workers: int = 2):
-        super().__init__()
-        self.data_dir = data_dir
-        self.batch_size = batch_size
-        self.seed = seed
-        self.num_workers = num_workers
-
-        self.full = CallRecords(root=self.data_dir, train=True, non_seq=True, ratio=ratio)
-        self.train, self.val = random_split(
-            self.full, [0.9, 0.1], generator=torch.Generator().manual_seed(self.seed)
-        )
-        self.test = CallRecords(root=self.data_dir, train=False, non_seq=True, ratio=ratio)
-        self.pred = CallRecords(root=self.data_dir, valid=True, non_seq=True, ratio=ratio)
-
-    @property
-    def feature_dim(self):
-        return self.full.features_num
 
     def train_dataloader(self):
-        return DataLoader(
-            self.train,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            persistent_workers=True,
-        )
+        return self.dataloader(self.train, shuffle=True)
 
     def val_dataloader(self):
-        return DataLoader(
-            self.val,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            persistent_workers=True,
-        )
+        return self.dataloader(self.val)
 
     def test_dataloader(self):
-        return DataLoader(
-            self.test,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            persistent_workers=True,
-        )
+        return self.dataloader(self.test)
 
     def predict_dataloader(self):
-        return DataLoader(
-            self.pred,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            persistent_workers=True,
-        )
+        return self.dataloader(self.pred)

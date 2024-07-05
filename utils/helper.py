@@ -106,24 +106,3 @@ def apply_scaler(dataframes: List[pd.DataFrame], columns: List[str]) -> List[pd.
         for dataframe in dataframes:
             dataframe[col] = scaler.transform(dataframe[col].values.reshape(-1, 1))
     return dataframes
-
-
-def split_data(
-        labels: torch.Tensor,
-        seq_index_with_time_diff: List[Tuple[List[int], torch.Tensor]],
-        ratio: float,
-) -> Tuple[
-    Tuple[torch.Tensor, List[Tuple[List[int], torch.Tensor]]],
-    Tuple[torch.Tensor, List[Tuple[List[int], torch.Tensor]]],
-]:
-    paired = list(zip(seq_index_with_time_diff, labels))
-    np.random.shuffle(paired)
-    train_size = int(len(paired) * ratio)
-    train_paired, test_paired = paired[:train_size], paired[train_size:]
-    # 解包配对以分离数据和标签
-    train_seq_index_with_time_diff, train_labels = zip(*train_paired)
-    test_seq_index_with_time_diff, test_labels = zip(*test_paired)
-    return (
-        (torch.stack(train_labels), train_seq_index_with_time_diff),
-        (torch.stack(test_labels), test_seq_index_with_time_diff),
-    )
