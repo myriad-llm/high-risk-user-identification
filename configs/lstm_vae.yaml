@@ -1,0 +1,21 @@
+seed_everything: 123
+trainer:
+  max_epochs: 100
+  default_root_dir: ./lightning_logs/lstm_vae
+model:
+  class_path: models.LSTM_VAE
+  init_args:
+    feature: 2062
+    hidden_size: 256
+    dim_encoded: 128
+    num_layers: 2
+    num_classes: 2
+    vae_ckpt_path: './pre_trained_ckpt/ckpt_vae.pth'
+data:
+  class_path: datasets.CallRecordsDataModule
+  init_args:
+    data_dir: './data'
+    batch_size: 32
+    seed: 12
+    non_seq: false
+    num_workers: 4

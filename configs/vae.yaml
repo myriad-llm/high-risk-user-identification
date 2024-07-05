@@ -1,0 +1,17 @@
+seed_everything: 123
+trainer:
+  max_epochs: 100
+  default_root_dir: ./lightning_logs/vae
+model:
+  class_path: models.VAE
+  init_args:
+    in_channels: 2062
+    latent_dim: 128
+data:
+  class_path: datasets.CallRecordsDataModule
+  init_args:
+    data_dir: './data'
+    batch_size: 512
+    seed: 12
+    non_seq: true
+    num_workers: 4
