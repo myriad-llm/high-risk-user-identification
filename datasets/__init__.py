@@ -1,2 +1,2 @@
 from .call_records import CallRecords
-from .lit_call_records import CallRecordsDataModule
+from .call_records_dm import CallRecordsDataModule, CallRecordsNonSeqDataModule

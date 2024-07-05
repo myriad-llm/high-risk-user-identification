@@ -35,3 +35,4 @@ class CallRecordsDataModule(L.LightningDataModule):
 
     def predict_dataloader(self):
         return DataLoader(self.pred, batch_size=self.batch_size, shuffle=False, collate_fn=pad_collate)
+
