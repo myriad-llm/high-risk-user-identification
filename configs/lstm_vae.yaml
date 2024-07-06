@@ -4,7 +4,7 @@ trainer:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
       project: "lstm_vae"
-      save_dir: "./wandb"
+      save_dir: "./wandb/lstm_vae"
       log_model: "all"
   max_epochs: 1000
   default_root_dir: ./lightning_logs/lstm_vae
@@ -16,7 +16,7 @@ model:
     dim_encoded: 128
     num_layers: 2
     num_classes: 2
-    vae_ckpt_path: 'wandb\vae\su32zy0s\checkpoints\epoch=999-step=1097000.ckpt'
+    vae_ckpt_path: 'wandb\vae\hrpaa24o\checkpoints\epoch=7-step=14600.ckpt'
 data:
   class_path: datasets.CallRecordsDataModule
   init_args:

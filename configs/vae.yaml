@@ -4,7 +4,7 @@ trainer:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
       project: "vae"
-      save_dir: "./wandb"
+      save_dir: "./wandb/vae"
       log_model: "all"
   max_epochs: 1000
   default_root_dir: ./lightning_logs/vae
