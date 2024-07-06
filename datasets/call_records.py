@@ -66,6 +66,7 @@ class CallRecords(Dataset):
         "phone1_type",
         "phone2_type",
     ]
+    apply_cols: List[str] = categorical_columns + area_code_columns + province_columns + a_product_id_columns
     categorical_columns_type: Dict[str, str] = {
         key: "category" for key in categorical_columns
     }
@@ -251,13 +252,8 @@ class CallRecords(Dataset):
         train_records_df.drop(columns=self.city_columns, axis=1, inplace=True)
         val_records_df.drop(columns=self.city_columns, axis=1, inplace=True)
 
-        apply_cols = {
-            col: len(value_dicts[group])
-            for group, columns in remap_column_group.items()
-            for col in columns
-        }
-        train_records_df = apply_onehot(train_records_df, apply_cols)
-        val_records_df = apply_onehot(val_records_df, apply_cols)
+        train_records_df = apply_onehot(train_records_df, self.apply_cols)
+        val_records_df = apply_onehot(val_records_df, self.apply_cols)
 
         train_records_df = add_open_count(train_records_df)
         val_records_df = add_open_count(val_records_df)

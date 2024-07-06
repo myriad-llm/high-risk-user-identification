@@ -40,18 +40,9 @@ def remap_data(
 
     return df
 
-
-def apply_onehot(df: pd.DataFrame, apply_cols: Dict[str, int]) -> pd.DataFrame:
-    for apply_col, onehot_len in tqdm(apply_cols.items(), desc="Applying One-Hot"):
-        temp_one_hot = pd.DataFrame(
-            columns=[f"{apply_col}_{j}" for j in range(onehot_len)],
-            data=np.eye(onehot_len)[df[apply_col].values],
-        )
-        temp_one_hot = temp_one_hot.astype(pd.SparseDtype("int", 0))
-        df.drop([apply_col], axis=1, inplace=True)
-        df = pd.concat([df, temp_one_hot], axis=1)
-    return df
-
+def apply_onehot(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
+    onehot_df = pd.get_dummies(df, columns=columns, dummy_na=True)
+    return onehot_df
 
 def add_open_count(df: pd.DataFrame) -> pd.DataFrame:
     df = pd.merge(
