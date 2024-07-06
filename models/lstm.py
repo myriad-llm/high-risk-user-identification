@@ -23,10 +23,10 @@ class LSTM(L.LightningModule):
         return out
 
     def training_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        seq, _, labels = batch
+        seqs, _, labels, _ = batch
         labels = torch.argmax(labels, dim=1)
 
-        outputs = self(seq)
+        outputs = self(seqs)
         loss = F.cross_entropy(outputs, labels)
 
         self.log("train_loss", loss.item() / batch.size(0), sync_dist=True)
@@ -34,10 +34,10 @@ class LSTM(L.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        seq, _, labels = batch
+        seqs, _, labels, _ = batch
         labels = torch.argmax(labels, dim=1)
 
-        outputs = self(seq)
+        outputs = self(seqs)
         loss = F.cross_entropy(outputs, labels)
 
         self.log("val_loss", loss.item() / batch.size(0), sync_dist=True)
@@ -49,5 +49,9 @@ class LSTM(L.LightningModule):
         return optimizer
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        seq, _, _ = batch
-        return self(seq)
+        seqs, _, _, msisdns = batch
+        outputs = torch.argmax(
+            torch.softmax(self(seqs), dim=1),
+            dim=1,
+        )
+        return outputs, msisdns

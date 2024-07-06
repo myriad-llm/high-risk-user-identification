@@ -2,7 +2,7 @@ import os
 
 from lightning.pytorch.cli import LightningCLI
 
-from callbacks import LSTM_VAE_PredictionWriter, LSTMPredictionWriter
+from callbacks import LSTMPredictionWriter
 from datasets import CallRecords4VAEDataModule, CallRecordsDataModule
 from models import LSTM, LSTM_VAE, VAE
 

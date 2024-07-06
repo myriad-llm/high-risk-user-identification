@@ -61,7 +61,7 @@ class LSTM_VAE(L.LightningModule):
         return out, vae_pred, mu, sigma
 
     def training_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        seqs, time_diff, labels = batch
+        seqs, _, labels, _ = batch
         outputs, vae_pred, mu, sigma = self(seqs)
         labels = torch.argmax(labels, dim=1)
         loss = self.loss_fn(vae_pred, seqs, mu, sigma, outputs, labels)
@@ -69,7 +69,7 @@ class LSTM_VAE(L.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        seqs, time_diff, labels = batch
+        seqs, _, labels, _ = batch
         outputs, vae_pred, mu, sigma = self(seqs)
         labels = torch.argmax(labels, dim=1)
         loss = self.loss_fn(vae_pred, seqs, mu, sigma, outputs, labels)
