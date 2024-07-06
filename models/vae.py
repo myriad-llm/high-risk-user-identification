@@ -1,12 +1,12 @@
 import lightning as L
 import torch
-import torch.nn.functional as F
 import torch.nn as nn
+import torch.nn.functional as F
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 
 
 def loss_fn(recon_x, x, mu, log_var):
-    bce = F.binary_cross_entropy(recon_x, x, reduction='sum')
+    bce = F.binary_cross_entropy(recon_x, x, reduction="sum")
     kld = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
     return bce + kld
 

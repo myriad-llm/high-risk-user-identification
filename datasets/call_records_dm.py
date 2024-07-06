@@ -9,12 +9,12 @@ from utils import pad_collate
 
 class CallRecordsDataModuleBase(L.LightningDataModule):
     def __init__(
-            self,
-            data_dir: str,
-            batch_size: int,
-            seed: int,
-            non_seq: bool,
-            num_workers: int,
+        self,
+        data_dir: str,
+        batch_size: int,
+        seed: int,
+        non_seq: bool,
+        num_workers: int,
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -43,12 +43,12 @@ class CallRecordsDataModuleBase(L.LightningDataModule):
 
 class CallRecordsDataModule(CallRecordsDataModuleBase):
     def __init__(
-            self,
-            data_dir: str,
-            batch_size: int,
-            seed: int,
-            non_seq: bool = False,
-            num_workers: int = 2,
+        self,
+        data_dir: str,
+        batch_size: int,
+        seed: int,
+        non_seq: bool = False,
+        num_workers: int = 2,
     ):
         super().__init__(data_dir, batch_size, seed, non_seq, num_workers)
 
@@ -68,11 +68,11 @@ class CallRecordsDataModule(CallRecordsDataModuleBase):
 
 class CallRecords4VAEDataModule(CallRecordsDataModuleBase):
     def __init__(
-            self,
-            data_dir: str,
-            batch_size: int,
-            seed: int,
-            num_workers: int = 2,
+        self,
+        data_dir: str,
+        batch_size: int,
+        seed: int,
+        num_workers: int = 2,
     ):
         super().__init__(data_dir, batch_size, seed, True, num_workers)
 

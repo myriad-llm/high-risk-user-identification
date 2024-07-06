@@ -1,7 +1,7 @@
 import lightning as L
 import torch
-import torch.nn.functional as F
 import torch.nn as nn
+import torch.nn.functional as F
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 
 
