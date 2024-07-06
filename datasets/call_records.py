@@ -66,7 +66,12 @@ class CallRecords(Dataset):
         "phone1_type",
         "phone2_type",
     ]
-    apply_cols: List[str] = categorical_columns + area_code_columns + province_columns + a_product_id_columns
+    apply_cols: List[str] = (
+        categorical_columns
+        + area_code_columns
+        + province_columns
+        + a_product_id_columns
+    )
     categorical_columns_type: Dict[str, str] = {
         key: "category" for key in categorical_columns
     }
@@ -122,12 +127,12 @@ class CallRecords(Dataset):
         if self.non_seq:
             return self.records[index]
 
-        seq_index, time_diff = self.seq_index_with_time_diff[index]
+        seq_index, msisdn, time_diff = self.seq_index_with_time_diff[index]
         seq, label = self.records[seq_index], (
             self.labels[index] if self.labels is not None else None
         )
 
-        return seq, time_diff, label
+        return seq, time_diff, label, msisdn
 
     def __len__(self) -> int:
         if self.non_seq:
@@ -227,14 +232,19 @@ class CallRecords(Dataset):
             self._load_dataframes()
         )
 
-        total_records_df = pd.concat([train_records_df, val_records_df], ignore_index=True)
+        total_records_df = pd.concat(
+            [train_records_df, val_records_df], ignore_index=True
+        )
         train_len = len(train_records_df)
 
         total_records_df.drop(columns=self.city_columns, axis=1, inplace=True)
         total_records_df = apply_onehot(total_records_df, self.apply_cols)
         total_records_df = add_open_count(total_records_df)
-        
-        train_records_df, val_records_df = total_records_df[:train_len].copy(), total_records_df[train_len:].copy()
+
+        train_records_df, val_records_df = (
+            total_records_df[:train_len].copy(),
+            total_records_df[train_len:].copy(),
+        )
         del total_records_df
 
         train_records_seq_ids = gen_seq_ids(train_records_df)
@@ -251,7 +261,6 @@ class CallRecords(Dataset):
         val_records_df.drop(columns=["msisdn", "start_time"], axis=1, inplace=True)
 
         # 输出所有object类型的列
-
 
         train_records_df, val_records_df = apply_scaler(
             [train_records_df, val_records_df],
@@ -357,9 +366,3 @@ class CallRecords(Dataset):
                 None,
             ),
         )
-
-
-if __name__ == "__main__":
-    dataset = CallRecords("../data")
-    print("time diff: ", dataset[0][1])
-    print("features num:", dataset.features_num)

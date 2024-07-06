@@ -21,8 +21,8 @@ def pad_collate(batch):
 def apply_onehot(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
     onehot_df = pd.get_dummies(df, columns=columns, dummy_na=False)
     for col in onehot_df.columns:
-        if onehot_df[col].dtype == 'bool':
-            onehot_df[col] = onehot_df[col].astype('int8')
+        if onehot_df[col].dtype == "bool":
+            onehot_df[col] = onehot_df[col].astype("int8")
     return onehot_df
 
 
@@ -57,13 +57,14 @@ def split_seq_and_time_diff(
     df: pd.DataFrame,
     seq_ids: Dict[str, List[int]],
 ) -> Tuple[
-    List[Tuple[List[int], torch.Tensor]],
+    List[Tuple[List[int], str, torch.Tensor]],
     List[str],
 ]:
     seq_msisdn = [df["msisdn"].iloc[indices[0]] for indices in seq_ids.values()]
     seq_index_with_time_diff = [
         (
             indices,
+            df["msisdn"].iloc[indices[0]],
             torch.tensor(
                 [0]
                 + [
