@@ -336,9 +336,12 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 
+.vscode/
+
 data/
 checkpoint/
 res/
 lightning_logs/
 pre_trained_ckpt/
 logs/
+wandb/
