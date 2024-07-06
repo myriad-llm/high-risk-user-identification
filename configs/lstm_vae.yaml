@@ -1,6 +1,12 @@
 seed_everything: 123
 trainer:
-  max_epochs: 100
+  logger:
+    class_path: lightning.pytorch.loggers.WandbLogger
+    init_args:
+      project: "lstm_vae"
+      save_dir: "./wandb"
+      log_model: "all"
+  max_epochs: 1000
   default_root_dir: ./lightning_logs/lstm_vae
 model:
   class_path: models.LSTM_VAE
@@ -10,7 +16,7 @@ model:
     dim_encoded: 128
     num_layers: 2
     num_classes: 2
-    vae_ckpt_path: './pre_trained_ckpt/ckpt_vae.pth'
+    vae_ckpt_path: 'wandb\vae\su32zy0s\checkpoints\epoch=999-step=1097000.ckpt'
 data:
   class_path: datasets.CallRecordsDataModule
   init_args:

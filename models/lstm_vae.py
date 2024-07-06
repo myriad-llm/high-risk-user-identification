@@ -24,7 +24,7 @@ class LSTM_VAE(L.LightningModule):
         self.vae_pretrained = True if vae_ckpt_path is not None else False
 
         if self.vae_pretrained:
-            self.vae = VAE.load_from_checkpoint(vae_ckpt_path)
+            self.vae = VAE.load_from_checkpoint(vae_ckpt_path, in_channels=feature, latent_dim=dim_encoded)
             self.vae.freeze()
         else:
             self.vae = VAE(in_channels=feature, latent_dim=dim_encoded)
