@@ -5,6 +5,9 @@ import torch
 import torch.nn as nn
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch.nn import functional as F
+import torchmetrics
+from torchmetrics.classification import BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score
+from torchmetrics.collections import MetricCollection
 
 from .vae import VAE
 
@@ -41,6 +44,16 @@ class LSTM_VAE(L.LightningModule):
 
         self.lstm = nn.LSTM(dim_encoded, hidden_size, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_size, num_classes)
+        metrics = MetricCollection(
+            [
+                BinaryAccuracy(),
+                BinaryPrecision(),
+                BinaryRecall(),
+                BinaryF1Score()
+            ]
+        )
+        self.train_metrics = metrics.clone(prefix="train_")
+        self.valid_metrics = metrics.clone(prefix="valid_")
 
     def forward(self, x):
         b, seq_len, f_dim = x.shape
@@ -66,6 +79,9 @@ class LSTM_VAE(L.LightningModule):
         labels = torch.argmax(labels, dim=1)
         loss = self.loss_fn(vae_pred, seqs, mu, sigma, outputs, labels)
         self.log("train_loss", loss.item() / batch.size(0), sync_dist=True)
+        metrics = self.train_metrics(outputs, labels)
+        self.log_dict(metrics, 
+                      sync_dist=True, prog_bar=False, on_step=False, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx) -> STEP_OUTPUT:
@@ -74,7 +90,14 @@ class LSTM_VAE(L.LightningModule):
         labels = torch.argmax(labels, dim=1)
         loss = self.loss_fn(vae_pred, seqs, mu, sigma, outputs, labels)
         self.log("val_loss", loss.item() / batch.size(0), sync_dist=True)
+        self.valid_metrics.update(outputs, labels)
         return loss
+
+    def on_validation_epoch_end(self):
+        metrics = self.valid_metrics.compute()
+        self.log_dict(metrics,
+                        sync_dist=True, prog_bar=False, on_step=False, on_epoch=True)
+        self.valid_metrics.reset()
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)

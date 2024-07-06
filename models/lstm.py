@@ -3,6 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from lightning.pytorch.utilities.types import STEP_OUTPUT
+import torchmetrics
+from torchmetrics.classification import BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score
+from torchmetrics.collections import MetricCollection
 
 
 class LSTM(L.LightningModule):
@@ -14,6 +17,16 @@ class LSTM(L.LightningModule):
         self.num_layers = num_layers
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_size, num_classes)
+        metrics = MetricCollection(
+            [
+                BinaryAccuracy(),
+                BinaryPrecision(),
+                BinaryRecall(),
+                BinaryF1Score()
+            ]
+        )
+        self.train_metrics = metrics.clone(prefix="train_")
+        self.valid_metrics = metrics.clone(prefix="valid_")
 
     def forward(self, x):
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
@@ -29,7 +42,11 @@ class LSTM(L.LightningModule):
         outputs = self(seqs)
         loss = F.cross_entropy(outputs, labels)
 
-        self.log("train_loss", loss.item() / batch.size(0), sync_dist=True)
+        self.log("train_loss", loss.item(), sync_dist=True)
+
+        preds = torch.argmax(outputs, dim=1)
+        metrics = self.train_metrics(preds, labels)
+        self.log_dict(metrics, sync_dist=True, prog_bar=False, on_step=False, on_epoch=True)
 
         return loss
 
@@ -40,9 +57,18 @@ class LSTM(L.LightningModule):
         outputs = self(seqs)
         loss = F.cross_entropy(outputs, labels)
 
-        self.log("val_loss", loss.item() / batch.size(0), sync_dist=True)
+        self.log("val_loss", loss.item(), sync_dist=True)
+
+        preds = torch.argmax(outputs, dim=1)
+
+        self.valid_metrics.update(preds, labels)
 
         return loss
+    
+    def on_validation_epoch_end(self):
+        metrics = self.valid_metrics.compute()
+        self.log_dict(metrics, sync_dist=True, prog_bar=False, on_step=False, on_epoch=True)
+        self.valid_metrics.reset()
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)

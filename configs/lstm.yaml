@@ -4,25 +4,23 @@ trainer:
   logger:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
-      project: "lstm_vae"
-      save_dir: "./wandb/lstm_vae"
+      project: "lstm"
+      save_dir: "./wandb/lstm"
       log_model: "all"
-  max_epochs: 1000
-  default_root_dir: ./lightning_logs/lstm_vae
+  max_epochs: 100
+  default_root_dir: ./lightning_logs/lstm
 model:
-  class_path: models.LSTM_VAE
+  class_path: models.LSTM
   init_args:
-    feature: 1886
-    hidden_size: 256
-    dim_encoded: 128
+    input_size: 1886
+    hidden_size: 128
     num_layers: 2
     num_classes: 2
-    vae_ckpt_path: 'pretrained_ckpts/epoch=999-step=229000.ckpt'
 data:
   class_path: datasets.CallRecordsDataModule
   init_args:
-    data_dir: "./data"
+    data_dir: './data'
     batch_size: 32
     seed: 12
     non_seq: false
-    num_workers: 2
+    num_workers: 1
