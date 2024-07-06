@@ -17,6 +17,6 @@ data:
   class_path: datasets.CallRecords4VAEDataModule
   init_args:
     data_dir: './data'
-    batch_size: 512
+    batch_size: 4096
     seed: 12
-    num_workers: 4
+    num_workers: 8
