@@ -338,6 +338,11 @@ cython_debug/
 
 .vscode/
 
+pyproject.toml
+.python-version
+requirements-dev.lock
+requirements.lock
+
 data/
 checkpoint/
 res/
