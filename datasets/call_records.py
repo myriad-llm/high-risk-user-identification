@@ -76,6 +76,7 @@ class CallRecords(Dataset):
         root: Union[str, Path],
         predict: bool = False,
         non_seq: bool = False,
+        time_div: int = 3600,
     ) -> None:
         if isinstance(root, str):
             root = os.path.expanduser(root)
@@ -85,8 +86,8 @@ class CallRecords(Dataset):
         self.non_seq = non_seq
 
         def time_map(x):
-            x / 60
-            return 1 / torch.log(x + torch.e)
+            x_div = x / time_div
+            return 1 / torch.log(x_div + torch.e)
 
         if self._check_legacy_exists():
             self.records, self.labels, self.seq_index_with_time_diff = (
@@ -226,37 +227,15 @@ class CallRecords(Dataset):
             self._load_dataframes()
         )
 
-        remap_column_group = {
-            "area_code": self.area_code_columns,
-            # 'city': self.city_columns,
-            "province": self.province_columns,
-            "a_product_id": self.a_product_id_columns,
-        }
-        remap_column_group.update({col: [col] for col in self.categorical_columns})
+        total_records_df = pd.concat([train_records_df, val_records_df], ignore_index=True)
+        train_len = len(train_records_df)
 
-        value_dicts = {
-            group: generate_value_dict(columns, train_records_df, val_records_df)
-            for group, columns in remap_column_group.items()
-        }
-        value_dicts.update(
-            {
-                col: generate_value_dict([col], train_records_df, val_records_df)
-                for col in self.categorical_columns
-            }
-        )
-
-        train_records_df = remap_data(train_records_df, remap_column_group, value_dicts)
-        val_records_df = remap_data(val_records_df, remap_column_group, value_dicts)
-
-        # TODO
-        train_records_df.drop(columns=self.city_columns, axis=1, inplace=True)
-        val_records_df.drop(columns=self.city_columns, axis=1, inplace=True)
-
-        train_records_df = apply_onehot(train_records_df, self.apply_cols)
-        val_records_df = apply_onehot(val_records_df, self.apply_cols)
-
-        train_records_df = add_open_count(train_records_df)
-        val_records_df = add_open_count(val_records_df)
+        total_records_df.drop(columns=self.city_columns, axis=1, inplace=True)
+        total_records_df = apply_onehot(total_records_df, self.apply_cols)
+        total_records_df = add_open_count(total_records_df)
+        
+        train_records_df, val_records_df = total_records_df[:train_len].copy(), total_records_df[train_len:].copy()
+        del total_records_df
 
         train_records_seq_ids = gen_seq_ids(train_records_df)
         val_records_seq_ids = gen_seq_ids(val_records_df)
@@ -270,6 +249,9 @@ class CallRecords(Dataset):
 
         train_records_df.drop(columns=["msisdn", "start_time"], axis=1, inplace=True)
         val_records_df.drop(columns=["msisdn", "start_time"], axis=1, inplace=True)
+
+        # 输出所有object类型的列
+
 
         train_records_df, val_records_df = apply_scaler(
             [train_records_df, val_records_df],
@@ -375,3 +357,9 @@ class CallRecords(Dataset):
                 None,
             ),
         )
+
+
+if __name__ == "__main__":
+    dataset = CallRecords("../data")
+    print("time diff: ", dataset[0][1])
+    print("features num:", dataset.features_num)

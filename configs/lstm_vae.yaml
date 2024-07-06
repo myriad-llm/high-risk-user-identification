@@ -11,12 +11,12 @@ trainer:
 model:
   class_path: models.LSTM_VAE
   init_args:
-    feature: 2062
+    feature: 1886
     hidden_size: 256
     dim_encoded: 128
     num_layers: 2
     num_classes: 2
-    vae_ckpt_path: 'wandb\vae\hrpaa24o\checkpoints\epoch=7-step=14600.ckpt'
+    vae_ckpt_path: 'pretrained_ckpts/vae.ckpt'
 data:
   class_path: datasets.CallRecordsDataModule
   init_args:

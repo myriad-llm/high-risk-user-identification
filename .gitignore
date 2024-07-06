@@ -342,6 +342,6 @@ data/
 checkpoint/
 res/
 lightning_logs/
-pre_trained_ckpt/
+pretrained_ckpt/
 logs/
 wandb/
