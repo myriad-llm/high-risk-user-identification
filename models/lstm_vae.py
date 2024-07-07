@@ -1,4 +1,5 @@
 import os
+from typing import Callable, Iterable
 
 import lightning as L
 import torch
@@ -8,9 +9,11 @@ from torch.nn import functional as F
 import torchmetrics
 from torchmetrics.classification import BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score
 from torchmetrics.collections import MetricCollection
+from torch.optim import AdamW, Optimizer
 
 from .vae import VAE
 
+OptimizerCallable = Callable[[Iterable], Optimizer]
 
 class LSTM_VAE(L.LightningModule):
     def __init__(
@@ -21,10 +24,12 @@ class LSTM_VAE(L.LightningModule):
         num_layers: int,
         num_classes: int,
         vae_ckpt_path: str = None,
+        optimizer: OptimizerCallable = AdamW,
     ):
         super().__init__()
 
         self.save_hyperparameters()
+        self.optimizer = optimizer
 
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -102,8 +107,10 @@ class LSTM_VAE(L.LightningModule):
         self.valid_metrics.reset()
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
+        optim = self.optimizer(
+            self.parameters(),
+        )
+        return optim
 
     def loss_fn(self, recon_x, x, mu, log_var, outputs, labels, alpha=0.5):
         loss = F.cross_entropy(outputs, labels)

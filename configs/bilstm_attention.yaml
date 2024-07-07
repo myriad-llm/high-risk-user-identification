@@ -5,11 +5,11 @@ trainer:
   logger:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
-      project: tlstm
-      save_dir: "./wandb/tlstm"
+      project: "lstm"
+      save_dir: "./wandb/lstm"
       log_model: true
   max_epochs: 100
-  default_root_dir: ./lightning_logs/tlstm
+  default_root_dir: ./lightning_logs/lstm
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
@@ -20,14 +20,20 @@ trainer:
         verbose: false
     - class_path: callbacks.LSTMPredictionWriter
       init_args:
-        output_dir: './predictions/tlstm'
+        output_dir: './predictions/lstm'
         write_interval: "epoch"
 model:
-  class_path: models.TimeLSTM
+  class_path: models.LSTM
   init_args:
-    feature: 1886
+    input_size: 1886
     hidden_size: 128
+    num_layers: 2
     num_classes: 2
+    optimizer:
+      class_path: torch.optim.AdamW
+      init_args:
+        lr: 1e-3
+        weight_decay: 0.01
 data:
   class_path: datasets.CallRecordsDataModule
   init_args:
@@ -36,4 +42,3 @@ data:
     seed: 12
     non_seq: false
     num_workers: 1
-    time_div: 3600

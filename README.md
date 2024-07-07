@@ -2,6 +2,10 @@
 
 ### Datasets
 
+```shell
+mkdir -p data/CallRecords/raw
+```
+
 Put `trainSet_ans.csv`, `testSet_res.csv` and `validationSet_res.csv` files
 at `data/CallRecords/raw/` directory.
 

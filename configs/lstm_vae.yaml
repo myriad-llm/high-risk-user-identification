@@ -31,6 +31,11 @@ model:
     num_layers: 2
     num_classes: 2
     vae_ckpt_path: 'pretrained_ckpts/epoch=999-step=229000.ckpt'
+    optimizer:
+      class_path: torch.optim.AdamW
+      init_args:
+        lr: 1e-4
+        weight_decay: 0.01
 data:
   class_path: datasets.CallRecordsDataModule
   init_args:
