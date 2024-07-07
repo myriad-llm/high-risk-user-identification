@@ -6,9 +6,17 @@ trainer:
     init_args:
       project: "lstm"
       save_dir: "./wandb/lstm"
-      log_model: "all"
+      log_model: true
   max_epochs: 100
   default_root_dir: ./lightning_logs/lstm
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: 'valid_BinaryF1Score'
+        mode: 'max'
+        save_top_k: 10
+        filename: '{epoch}-{valid_BinaryF1Score:.2f}'
+        verbose: false
 model:
   class_path: models.LSTM
   init_args:

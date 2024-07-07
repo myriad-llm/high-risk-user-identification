@@ -10,12 +10,12 @@ from tqdm import tqdm
 
 
 def pad_collate(batch):
-    seq, time_diff, labels = zip(*batch)
+    seq, time_diff, labels, msisdn = zip(*batch)
 
     seq_padded = pad_sequence(seq, batch_first=True)
     time_diff_padded = pad_sequence(time_diff, batch_first=True)
     labels = torch.stack(labels)
-    return seq_padded, time_diff_padded, labels
+    return seq_padded, time_diff_padded, labels, msisdn
 
 
 def apply_onehot(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
@@ -77,7 +77,7 @@ def split_seq_and_time_diff(
         )
         for indices in tqdm(seq_ids.values(), desc="Splitting Sequence and Time Diff")
     ]
-    for seq, time_diff in seq_index_with_time_diff:
+    for seq, msisdn, time_diff in seq_index_with_time_diff:
         assert all(i >= 0 for i in time_diff), "time_diff should be positive"
         assert len(seq) == len(time_diff), "seq and time_diff length mismatch"
 
