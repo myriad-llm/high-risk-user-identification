@@ -15,6 +15,7 @@ class CallRecordsDataModuleBase(L.LightningDataModule):
         seed: int,
         non_seq: bool,
         num_workers: int,
+        time_div: int = 3600,
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -22,9 +23,10 @@ class CallRecordsDataModuleBase(L.LightningDataModule):
         self.seed = seed
         self.non_seq = non_seq
         self.num_workers = num_workers
+        self.time_div = time_div
 
-        self.full = CallRecords(root=self.data_dir, predict=False, non_seq=non_seq)
-        self.pred = CallRecords(root=self.data_dir, predict=True, non_seq=non_seq)
+        self.full = CallRecords(root=self.data_dir, predict=False, non_seq=non_seq, time_div=time_div)
+        self.pred = CallRecords(root=self.data_dir, predict=True, non_seq=non_seq, time_div=time_div)
 
     @property
     def feature_dim(self):
@@ -49,8 +51,9 @@ class CallRecordsDataModule(CallRecordsDataModuleBase):
         seed: int,
         non_seq: bool = False,
         num_workers: int = 2,
+        time_div: int = 3600,
     ):
-        super().__init__(data_dir, batch_size, seed, non_seq, num_workers)
+        super().__init__(data_dir, batch_size, seed, non_seq, num_workers, time_div)
 
         self.train, self.val = random_split(
             self.full, [0.9, 0.1], generator=torch.Generator().manual_seed(self.seed)

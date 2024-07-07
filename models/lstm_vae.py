@@ -107,7 +107,7 @@ class LSTM_VAE(L.LightningModule):
 
     def loss_fn(self, recon_x, x, mu, log_var, outputs, labels, alpha=0.5):
         loss = F.cross_entropy(outputs, labels)
-        if self.vae_pretrained:
+        if not self.vae_pretrained:
             bce = F.binary_cross_entropy(
                 recon_x, x.view(-1, x.shape[2]), reduction="sum"
             )
