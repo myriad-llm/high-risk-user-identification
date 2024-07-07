@@ -100,8 +100,8 @@ class CallRecords(Dataset):
             )
 
             self.seq_index_with_time_diff = [
-                (seq, time_map(time_diff))
-                for seq, time_diff in self.seq_index_with_time_diff
+                (seq, msisdn, time_map(time_diff))
+                for seq, msisdn, time_diff in self.seq_index_with_time_diff
             ]
             return
 
@@ -116,8 +116,8 @@ class CallRecords(Dataset):
             pred if self.predict else data
         )
         self.seq_index_with_time_diff = [
-            (seq, time_map(time_diff))
-            for seq, time_diff in self.seq_index_with_time_diff
+            (seq, msisdn, time_map(time_diff))
+            for seq, msisdn, time_diff in self.seq_index_with_time_diff
         ]
 
     def __getitem__(
@@ -191,8 +191,16 @@ class CallRecords(Dataset):
 
     def _save_legacy_data(
         self,
-        data: Tuple[torch.Tensor, torch.Tensor, List[Tuple[List[int], torch.Tensor]]],
-        pred: Tuple[torch.Tensor, None, List[Tuple[List[int], torch.Tensor]]],
+        data: Tuple[
+            torch.Tensor,
+            torch.Tensor,
+            List[Tuple[List[int], str, torch.Tensor]],
+        ],
+        pred: Tuple[
+            torch.Tensor,
+            None,
+            List[Tuple[List[int], str, torch.Tensor]],
+        ],
     ) -> None:
         if not os.path.exists(self.processed_folder):
             os.makedirs(self.processed_folder)
@@ -225,8 +233,8 @@ class CallRecords(Dataset):
         )
 
     def _load_data(self) -> Tuple[
-        Tuple[torch.Tensor, torch.Tensor, List[Tuple[List[int], torch.Tensor]]],
-        Tuple[torch.Tensor, None, List[Tuple[List[int], torch.Tensor]]],
+        Tuple[torch.Tensor, torch.Tensor, List[Tuple[List[int], str, torch.Tensor]]],
+        Tuple[torch.Tensor, None, List[Tuple[List[int], str, torch.Tensor]]],
     ]:
         (train_records_df, train_labels_df), (val_records_df, _) = (
             self._load_dataframes()
