@@ -1,0 +1,28 @@
+# lightning.pytorch==2.3.1
+seed_everything: 123
+trainer:
+  logger:
+    class_path: lightning.pytorch.loggers.WandbLogger
+    init_args:
+      project: "ae"
+      save_dir: "./wandb/ae"
+      log_model: "all"
+  max_epochs: 1000
+  default_root_dir: ./lightning_logs/ae
+model:
+  class_path: models.AE
+  init_args:
+    in_channels: 1886
+    latent_dim: 16
+    optimizer:
+      class_path: torch.optim.AdamW
+      init_args:
+        lr: 1e-4
+        weight_decay: 0.01
+data:
+  class_path: datasets.CallRecords4VAEDataModule
+  init_args:
+    data_dir: "./data"
+    batch_size: 4096
+    seed: 12
+    num_workers: 8

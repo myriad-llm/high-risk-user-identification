@@ -55,14 +55,6 @@ class VAE(L.LightningModule):
 
         return loss
 
-    def validation_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        pred, mu, sigma = self(batch)
-        loss = loss_fn(pred, batch, mu, sigma)
-
-        self.log("val_loss", loss.item() / batch.size(0), sync_dist=True)
-
-        return loss
-
     def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
