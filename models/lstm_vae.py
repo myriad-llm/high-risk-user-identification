@@ -78,8 +78,9 @@ class LSTM_VAE(L.LightningModule):
         outputs, vae_pred, mu, sigma = self(seqs)
         labels = torch.argmax(labels, dim=1)
         loss = self.loss_fn(vae_pred, seqs, mu, sigma, outputs, labels)
-        self.log("train_loss", loss.item() / batch.size(0), sync_dist=True)
-        metrics = self.train_metrics(outputs, labels)
+        self.log("train_loss", loss.item(), sync_dist=True, on_step=False, on_epoch=True, batch_size=seqs.size(0))
+        preds = torch.argmax(outputs, dim=1)
+        metrics = self.train_metrics(preds, labels)
         self.log_dict(metrics, 
                       sync_dist=True, prog_bar=False, on_step=False, on_epoch=True)
         return loss
@@ -89,8 +90,9 @@ class LSTM_VAE(L.LightningModule):
         outputs, vae_pred, mu, sigma = self(seqs)
         labels = torch.argmax(labels, dim=1)
         loss = self.loss_fn(vae_pred, seqs, mu, sigma, outputs, labels)
-        self.log("val_loss", loss.item() / batch.size(0), sync_dist=True)
-        self.valid_metrics.update(outputs, labels)
+        self.log("val_loss", loss.item(), sync_dist=True, batch_size=seqs.size(0))
+        preds = torch.argmax(outputs, dim=1)
+        self.valid_metrics.update(preds, labels)
         return loss
 
     def on_validation_epoch_end(self):

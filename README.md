@@ -22,3 +22,11 @@ CUDA_VISIBLE_DEVICES=2 python main.py fit --config ./configs/<name>.yaml
 ```
 
 The logs and checkpoint will be saved at `./wandb/`
+
+Predict:
+
+Before predict, you need to modify the `ckpt_path` in the config file to determine which checkpoint to use.
+
+```shell
+CUDA_VISIBLE_DEVICES=2 python main.py predict --config ./configs/<name>.yaml
+```

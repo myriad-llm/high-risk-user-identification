@@ -14,7 +14,8 @@ def pad_collate(batch):
 
     seq_padded = pad_sequence(seq, batch_first=True)
     time_diff_padded = pad_sequence(time_diff, batch_first=True)
-    labels = torch.stack(labels)
+    if labels[0] is not None:
+        labels = torch.stack(labels)
     return seq_padded, time_diff_padded, labels, msisdn
 
 
