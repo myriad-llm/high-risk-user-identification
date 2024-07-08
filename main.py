@@ -11,7 +11,7 @@ class MyLightningCLI(LightningCLI):
 
 
 def cli_main():
-    cli = MyLightningCLI()
+    cli = MyLightningCLI(save_config_kwargs={"overwrite": True})
 
 
 if __name__ == "__main__":

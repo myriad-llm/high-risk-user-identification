@@ -8,7 +8,7 @@ trainer:
       project: tlstm
       save_dir: "./wandb/tlstm"
       log_model: true
-  max_epochs: 100
+  max_epochs: 1000
   default_root_dir: ./lightning_logs/tlstm
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
@@ -28,12 +28,19 @@ model:
     feature: 1886
     hidden_size: 128
     num_classes: 2
+    dropout_rate: 0.5
+    bidirectional: false
+    optimizer:
+      class_path: torch.optim.AdamW
+      init_args:
+        lr: 1e-3
+        weight_decay: 0.01
 data:
   class_path: datasets.CallRecordsDataModule
   init_args:
     data_dir: './data'
-    batch_size: 32
+    batch_size: 64
     seed: 12
     non_seq: false
-    num_workers: 1
-    time_div: 3600
+    num_workers: 2
+    time_div: 360
