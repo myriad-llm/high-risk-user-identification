@@ -41,14 +41,14 @@ class TLSTM_Unit(nn.Module):
         return new_h, c_t
 
 class TimeLSTM(L.LightningModule):
-    def __init__(self, feature, hidden_size, num_classes, dropout_rate, optimizer: OptimizerCallable, bidirectional=False):
+    def __init__(self, input_size, hidden_size, num_classes, dropout_rate, optimizer: OptimizerCallable, bidirectional=False):
         # assumes that batch_first is always true
         super().__init__()
         self.save_hyperparameters()
         self.optimizer = optimizer
 
         self.hidden_size = hidden_size
-        self.input_size = feature
+        self.input_size = input_size
         self.bidirectional = bidirectional
         self.num_classes = num_classes
         self.tlstm_unit = TLSTM_Unit(self.input_size, self.hidden_size)

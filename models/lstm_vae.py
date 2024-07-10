@@ -18,7 +18,7 @@ OptimizerCallable = Callable[[Iterable], Optimizer]
 class LSTM_VAE(L.LightningModule):
     def __init__(
         self,
-        feature: int,
+        input_size: int,
         hidden_size: int,
         dim_encoded: int,
         num_layers: int,
@@ -41,11 +41,11 @@ class LSTM_VAE(L.LightningModule):
 
         if self.vae_pretrained:
             self.vae = VAE.load_from_checkpoint(
-                vae_ckpt_path, in_channels=feature, latent_dim=dim_encoded
+                vae_ckpt_path, in_channels=input_size, latent_dim=dim_encoded
             )
             self.vae.freeze()
         else:
-            self.vae = VAE(in_channels=feature, latent_dim=dim_encoded)
+            self.vae = VAE(input_size=input_size, latent_dim=dim_encoded)
 
         self.lstm = nn.LSTM(dim_encoded, hidden_size, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_size, num_classes)

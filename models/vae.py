@@ -12,17 +12,17 @@ def loss_fn(recon_x, x, mu, log_var):
 
 
 class VAE(L.LightningModule):
-    def __init__(self, in_channels: int, latent_dim: int):
+    def __init__(self, input_size: int, latent_dim: int):
         super().__init__()
         self.save_hyperparameters()
 
         self.latent_dim = latent_dim
 
-        self.en_fc1 = nn.Linear(in_channels, 1024)
+        self.en_fc1 = nn.Linear(input_size, 1024)
         self.en_fc2_mu = nn.Linear(1024, latent_dim)
         self.en_fc2_sigma = nn.Linear(1024, latent_dim)
         self.de_fc3 = nn.Linear(latent_dim, 1024)
-        self.de_fc4 = nn.Linear(1024, in_channels)
+        self.de_fc4 = nn.Linear(1024, input_size)
 
     def encode(self, x):
         x = torch.flatten(x, start_dim=1)
