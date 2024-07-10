@@ -8,6 +8,28 @@ from sklearn.preprocessing import MinMaxScaler
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 
+def generate_value_dict(
+    columns: list[str], data: pd.DataFrame, valid: pd.DataFrame
+) -> Dict[str, int]:
+    return {
+        v: k
+        for k, v in enumerate(
+            pd.unique(pd.concat([data[columns], valid[columns]]).values.ravel())
+        )
+    }
+
+
+def remap_data(
+    df: pd.DataFrame,
+    column_group: Dict[str, List[str]],
+    value_dicts: Dict[str, Dict[str, int]],
+) -> pd.DataFrame:
+    for group, columns in column_group.items():
+        for col in columns:
+            df[col] = df[col].apply(lambda x: value_dicts[group][x])
+
+    return df
+
 
 def pad_collate(batch):
     seq, time_diff, labels, msisdn = zip(*batch)
@@ -19,12 +41,16 @@ def pad_collate(batch):
     return seq_padded, time_diff_padded, labels, msisdn
 
 
-def apply_onehot(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
-    onehot_df = pd.get_dummies(df, columns=columns, dummy_na=False)
-    for col in onehot_df.columns:
-        if onehot_df[col].dtype == "bool":
-            onehot_df[col] = onehot_df[col].astype("int8")
-    return onehot_df
+def apply_onehot(df: pd.DataFrame, apply_cols: Dict[str, int]) -> pd.DataFrame:
+    for apply_col, onehot_len in tqdm(apply_cols.items(), desc="Applying One-Hot"):
+        temp_one_hot = pd.DataFrame(
+            columns=[f"{apply_col}_{j}" for j in range(onehot_len)],
+            data=np.eye(onehot_len)[df[apply_col].values],
+        )
+        temp_one_hot = temp_one_hot.astype(pd.SparseDtype("int", 0))
+        df.drop([apply_col], axis=1, inplace=True)
+        df = pd.concat([df, temp_one_hot], axis=1)
+    return df
 
 
 def add_open_count(df: pd.DataFrame) -> pd.DataFrame:

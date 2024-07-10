@@ -20,7 +20,6 @@ OptimizerCallable = Callable[[Iterable], Optimizer]
 class MultiHeadAttention(nn.Module):
     def __init__(self, input_size, hidden_size, num_heads):
         super().__init__()
-        self.save_hyperparameters()
 
         self.num_heads = num_heads
         self.hidden_size = hidden_size
@@ -30,11 +29,6 @@ class MultiHeadAttention(nn.Module):
         self.value = nn.Linear(input_size, hidden_size * num_heads)
 
         self.fc_out = nn.Linear(hidden_size * num_heads, hidden_size * 8)
-        metrics = MetricCollection(
-            [BinaryAccuracy(), BinaryPrecision(), BinaryRecall(), BinaryF1Score()]
-        )
-        self.train_metrics = metrics.clone(prefix="train_")
-        self.valid_metrics = metrics.clone(prefix="valid_")
 
     def forward(self, x):
         batch_size = x.size(0)
@@ -73,18 +67,20 @@ class BiLSTMWithImprovedAttention(L.LightningModule):
         hidden_size,
         num_classes,
         attention_size,
-        num_layer,
+        num_layers,
         dropout_rate,
         num_heads,
         optimizer: OptimizerCallable = torch.optim.AdamW,
     ):
         super(BiLSTMWithImprovedAttention, self).__init__()
+        self.save_hyperparameters()
+        self.optimizer = optimizer
 
         # 双向LSTM层
         self.lstm = nn.LSTM(
             input_size,
             hidden_size,
-            num_layers=num_layer,
+            num_layers=num_layers,
             bidirectional=True,
             batch_first=True,
             dropout=dropout_rate,
@@ -98,6 +94,12 @@ class BiLSTMWithImprovedAttention(L.LightningModule):
 
         # 全连接层
         self.fc = nn.Linear(hidden_size * 2, num_classes)
+        
+        metrics = MetricCollection(
+            [BinaryAccuracy(), BinaryPrecision(), BinaryRecall(), BinaryF1Score()]
+        )
+        self.train_metrics = metrics.clone(prefix="train_")
+        self.valid_metrics = metrics.clone(prefix="valid_")
 
     def forward(self, x):
         # LSTM层

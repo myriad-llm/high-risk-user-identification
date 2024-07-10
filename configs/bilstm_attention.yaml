@@ -5,11 +5,11 @@ trainer:
   logger:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
-      project: "lstm"
-      save_dir: "./wandb/lstm"
+      project: "bilstm_attention"
+      save_dir: "./wandb/bilstm_attention"
       log_model: true
   max_epochs: 100
-  default_root_dir: ./lightning_logs/lstm
+  default_root_dir: ./lightning_logs/bilstm_attention
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
@@ -20,15 +20,18 @@ trainer:
         verbose: false
     - class_path: callbacks.LSTMPredictionWriter
       init_args:
-        output_dir: './predictions/lstm'
+        output_dir: './predictions/bilstm_attention'
         write_interval: "epoch"
 model:
-  class_path: models.LSTM
+  class_path: models.BiLSTMWithImprovedAttention
   init_args:
-    input_size: 1886
+    input_size: 1908
     hidden_size: 128
-    num_layers: 2
+    num_layers: 4
     num_classes: 2
+    attention_size: 32
+    dropout_rate: 0.5
+    num_heads: 6
     optimizer:
       class_path: torch.optim.AdamW
       init_args:

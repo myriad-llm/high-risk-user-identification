@@ -12,8 +12,8 @@ from utils import *
 
 class CallRecords(Dataset):
     resources = [
-        ("trainSet_res.csv", "trainSet_ans.csv"),
-        ("validationSet_res.csv", None),
+        ("cleaned_trainSet_res.csv", "trainSet_ans.csv"),
+        ("cleaned_validationSet_res.csv", None),
     ]
 
     manifests = [
@@ -45,7 +45,7 @@ class CallRecords(Dataset):
         "called_home_code",
         "called_code",
     ]
-    area_code_columns_type: Dict[str, str] = {key: "str" for key in area_code_columns}
+    area_code_columns_type: Dict[str, str] = {key: "int" for key in area_code_columns}
 
     city_columns: List[str] = ["phone1_loc_city", "phone2_loc_city"]
     city_columns_type: Dict[str, str] = {key: "str" for key in city_columns}
@@ -66,12 +66,6 @@ class CallRecords(Dataset):
         "phone1_type",
         "phone2_type",
     ]
-    apply_cols: List[str] = (
-        categorical_columns
-        + area_code_columns
-        + province_columns
-        + a_product_id_columns
-    )
     categorical_columns_type: Dict[str, str] = {
         key: "category" for key in categorical_columns
     }
@@ -86,12 +80,12 @@ class CallRecords(Dataset):
         if isinstance(root, str):
             root = os.path.expanduser(root)
         self.root = root
-
+        self.time_div = time_div
         self.predict = predict
         self.non_seq = non_seq
 
         def time_map(x):
-            x_div = x / time_div
+            x_div = x / self.time_div
             return 1 / torch.log(x_div + torch.e)
 
         if self._check_legacy_exists():
@@ -191,16 +185,8 @@ class CallRecords(Dataset):
 
     def _save_legacy_data(
         self,
-        data: Tuple[
-            torch.Tensor,
-            torch.Tensor,
-            List[Tuple[List[int], str, torch.Tensor]],
-        ],
-        pred: Tuple[
-            torch.Tensor,
-            None,
-            List[Tuple[List[int], str, torch.Tensor]],
-        ],
+        data: Tuple[torch.Tensor, torch.Tensor, List[Tuple[List[int], torch.Tensor]]],
+        pred: Tuple[torch.Tensor, None, List[Tuple[List[int], torch.Tensor]]],
     ) -> None:
         if not os.path.exists(self.processed_folder):
             os.makedirs(self.processed_folder)
@@ -233,27 +219,50 @@ class CallRecords(Dataset):
         )
 
     def _load_data(self) -> Tuple[
-        Tuple[torch.Tensor, torch.Tensor, List[Tuple[List[int], str, torch.Tensor]]],
-        Tuple[torch.Tensor, None, List[Tuple[List[int], str, torch.Tensor]]],
+        Tuple[torch.Tensor, torch.Tensor, List[Tuple[List[int], torch.Tensor]]],
+        Tuple[torch.Tensor, None, List[Tuple[List[int], torch.Tensor]]],
     ]:
         (train_records_df, train_labels_df), (val_records_df, _) = (
             self._load_dataframes()
         )
 
-        total_records_df = pd.concat(
-            [train_records_df, val_records_df], ignore_index=True
-        )
-        train_len = len(train_records_df)
+        remap_column_group = {
+            "area_code": self.area_code_columns,
+            # 'city': self.city_columns,
+            "province": self.province_columns,
+            "a_product_id": self.a_product_id_columns,
+        }
+        remap_column_group.update({col: [col] for col in self.categorical_columns})
 
-        total_records_df.drop(columns=self.city_columns, axis=1, inplace=True)
-        total_records_df = apply_onehot(total_records_df, self.apply_cols)
-        total_records_df = add_open_count(total_records_df)
-
-        train_records_df, val_records_df = (
-            total_records_df[:train_len].copy(),
-            total_records_df[train_len:].copy(),
+        value_dicts = {
+            group: generate_value_dict(columns, train_records_df, val_records_df)
+            for group, columns in remap_column_group.items()
+        }
+        value_dicts.update(
+            {
+                col: generate_value_dict([col], train_records_df, val_records_df)
+                for col in self.categorical_columns
+            }
         )
-        del total_records_df
+
+        train_records_df = remap_data(train_records_df, remap_column_group, value_dicts)
+        val_records_df = remap_data(val_records_df, remap_column_group, value_dicts)
+
+        # TODO
+        train_records_df.drop(columns=self.city_columns, axis=1, inplace=True)
+        val_records_df.drop(columns=self.city_columns, axis=1, inplace=True)
+
+        apply_cols = {
+            col: len(value_dicts[group])
+            for group, columns in remap_column_group.items()
+            for col in columns
+        }
+        print(apply_cols)
+        train_records_df = apply_onehot(train_records_df, apply_cols)
+        val_records_df = apply_onehot(val_records_df, apply_cols)
+
+        train_records_df = add_open_count(train_records_df)
+        val_records_df = add_open_count(val_records_df)
 
         train_records_seq_ids = gen_seq_ids(train_records_df)
         val_records_seq_ids = gen_seq_ids(val_records_df)
@@ -267,8 +276,6 @@ class CallRecords(Dataset):
 
         train_records_df.drop(columns=["msisdn", "start_time"], axis=1, inplace=True)
         val_records_df.drop(columns=["msisdn", "start_time"], axis=1, inplace=True)
-
-        # 输出所有object类型的列
 
         train_records_df, val_records_df = apply_scaler(
             [train_records_df, val_records_df],
@@ -374,3 +381,4 @@ class CallRecords(Dataset):
                 None,
             ),
         )
+

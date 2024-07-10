@@ -3,8 +3,10 @@ from .helper import (
     apply_onehot,
     apply_scaler,
     gen_seq_ids,
-    pad_collate,
+    generate_value_dict,
+    remap_data,
     split_seq_and_time_diff,
+    pad_collate,
 )
 
 __all__ = [
@@ -12,6 +14,8 @@ __all__ = [
     "apply_onehot",
     "apply_scaler",
     "gen_seq_ids",
+    "generate_value_dict",
+    "remap_data",
     "split_seq_and_time_diff",
     "pad_collate",
 ]
