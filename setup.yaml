@@ -1,0 +1,19 @@
+name: hrui
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - jsonargparse
+  - numpy
+  - omegaconf
+  - pandas
+  - pytorch
+  - pytorch-cuda=12.1
+  - lightning
+  - scikit-learn
+  - torchaudio
+  - torchvision
+  - tqdm
+  - transformers
+  - typeshed-client
+  - tzlocal
