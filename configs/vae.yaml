@@ -5,14 +5,14 @@ trainer:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
       project: "vae"
-      save_dir: "./wandb/vae"
+      save_dir: "./wandb/${trainer.logger.init_args.project}"
       log_model: "all"
   max_epochs: 1000
-  default_root_dir: ./lightning_logs/vae
+  default_root_dir: "./lightning_logs/${trainer.logger.init_args.project}"
 model:
   class_path: models.VAE
   init_args:
-    in_channels: 1886
+    in_channels: 1902
     latent_dim: 128
 data:
   class_path: datasets.CallRecords4VAEDataModule

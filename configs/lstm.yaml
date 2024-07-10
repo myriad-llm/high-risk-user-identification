@@ -6,33 +6,33 @@ trainer:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
       project: "lstm"
-      save_dir: "./wandb/lstm"
+      save_dir: "./wandb/${trainer.logger.init_args.project}"
       log_model: true
   max_epochs: 100
-  default_root_dir: ./lightning_logs/lstm
+  default_root_dir: "./lightning_logs/${trainer.logger.init_args.project}"
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
-        monitor: 'valid_BinaryF1Score'
-        mode: 'max'
+        monitor: "valid_BinaryF1Score"
+        mode: "max"
         save_top_k: 10
-        filename: '{epoch}-{valid_BinaryF1Score:.3f}'
+        filename: "{epoch}-{valid_BinaryF1Score:.3f}"
         verbose: false
     - class_path: callbacks.LSTMPredictionWriter
       init_args:
-        output_dir: './predictions/lstm'
+        output_dir: "./predictions/${trainer.logger.init_args.project}"
         write_interval: "epoch"
 model:
   class_path: models.LSTM
   init_args:
-    input_size: 1886
+    input_size: 1908
     hidden_size: 128
     num_layers: 2
     num_classes: 2
 data:
   class_path: datasets.CallRecordsDataModule
   init_args:
-    data_dir: './data'
+    data_dir: "./data"
     batch_size: 32
     seed: 12
     non_seq: false

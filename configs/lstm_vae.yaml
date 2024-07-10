@@ -6,31 +6,31 @@ trainer:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
       project: "lstm_vae"
-      save_dir: "./wandb/lstm_vae"
+      save_dir: "./wandb/${trainer.logger.init_args.project}"
       log_model: "all"
   max_epochs: 1000
-  default_root_dir: ./lightning_logs/lstm_vae
+  default_root_dir: "./lightning_logs/${trainer.logger.init_args.project}"
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
-        monitor: 'valid_BinaryF1Score'
-        mode: 'max'
+        monitor: "valid_BinaryF1Score"
+        mode: "max"
         save_top_k: 10
-        filename: '{epoch}-{valid_BinaryF1Score:.3f}'
+        filename: "{epoch}-{valid_BinaryF1Score:.3f}"
         verbose: false
     - class_path: callbacks.LSTMPredictionWriter
       init_args:
-        output_dir: './predictions/lstm'
+        output_dir: "./predictions/${trainer.logger.init_args.project}"
         write_interval: "epoch"
 model:
   class_path: models.LSTM_VAE
   init_args:
-    feature: 1886
+    feature: 1902
     hidden_size: 256
     dim_encoded: 128
     num_layers: 2
     num_classes: 2
-    vae_ckpt_path: 'pretrained_ckpts/epoch=999-step=229000.ckpt'
+    vae_ckpt_path: "pretrained_ckpts/epoch=999-step=229000.ckpt"
     optimizer:
       class_path: torch.optim.AdamW
       init_args:
