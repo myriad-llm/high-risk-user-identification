@@ -323,7 +323,7 @@ class CallRecordsV2(Dataset):
         """
         self.ncols = len(self.vocab.field_keys) - 2 + (1 if self.mlm else 0)
         log.info(f"ncols: {self.ncols}")
-        log.info(f"no of samples {len(data)}")
+        log.info(f"total samples: {len(data)}")
 
         return data, labels, window_label
 
