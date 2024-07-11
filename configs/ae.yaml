@@ -12,7 +12,6 @@ trainer:
 model:
   class_path: models.AE
   init_args:
-    in_channels: 1902
     latent_dim: 16
     optimizer:
       class_path: torch.optim.AdamW

@@ -25,7 +25,6 @@ trainer:
 model:
   class_path: models.xLSTM
   init_args:
-    input_size: 1902
     head_size: 128
     head_num: 4
     num_layers: 4

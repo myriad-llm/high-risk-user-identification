@@ -25,7 +25,6 @@ trainer:
 model:
   class_path: models.LSTM_VAE
   init_args:
-    feature: 1902
     hidden_size: 256
     dim_encoded: 128
     num_layers: 2

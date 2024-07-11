@@ -25,7 +25,6 @@ trainer:
 model:
   class_path: models.BiLSTMWithImprovedAttention
   init_args:
-    input_size: 1908
     hidden_size: 128
     num_layers: 4
     num_classes: 2
