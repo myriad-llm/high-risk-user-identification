@@ -27,19 +27,21 @@ model:
   init_args:
     hidden_size: 64
     num_classes: 2
+    num_heads: 4
     dropout_rate: 0.5
     bidirectional: false
     optimizer:
       class_path: torch.optim.AdamW
       init_args:
-        lr: 1e-3
+        lr: 1e-4
         weight_decay: 0.01
 data:
   class_path: datasets.CallRecordsDataModule
   init_args:
     data_dir: "./data"
-    batch_size: 64
+    batch_size: 32
     seed: 12
     non_seq: false
     num_workers: 2
     time_div: 360
+    mask_rate: 0.05

@@ -38,3 +38,4 @@ class LSTMPredictionWriter(BasePredictionWriter):
             ),
             index=False,
         )
+        print(res.describe())

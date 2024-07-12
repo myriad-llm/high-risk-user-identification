@@ -45,7 +45,7 @@ class CallRecords(Dataset):
         "called_home_code",
         "called_code",
     ]
-    area_code_columns_type: Dict[str, str] = {key: "int" for key in area_code_columns}
+    area_code_columns_type: Dict[str, str] = {key: "str" for key in area_code_columns}
 
     city_columns: List[str] = ["phone1_loc_city", "phone2_loc_city"]
     city_columns_type: Dict[str, str] = {key: "str" for key in city_columns}
@@ -76,13 +76,15 @@ class CallRecords(Dataset):
         predict: bool = False,
         non_seq: bool = False,
         time_div: int = 3600,
+        mask_rate: float = 0.0,
     ) -> None:
         if isinstance(root, str):
             root = os.path.expanduser(root)
         self.root = root
-        self.time_div = time_div
         self.predict = predict
         self.non_seq = non_seq
+        self.time_div = time_div
+        self.mask_rate = mask_rate
 
         def time_map(x):
             x_div = x / self.time_div
@@ -125,8 +127,14 @@ class CallRecords(Dataset):
         seq, label = self.records[seq_index], (
             self.labels[index] if self.labels is not None else None
         )
+        seq_len = len(seq_index)
 
-        return seq, time_diff, label, msisdn
+        if self.mask_rate > 0:
+            mask_num = int(seq_len * self.mask_rate)
+            mask_idx = torch.randperm(seq_len)[:mask_num]
+            seq[mask_idx] = 0  # Assuming the goal is to mask with zeros
+
+        return seq, time_diff, label, msisdn, seq_len
 
     def __len__(self) -> int:
         if self.non_seq:

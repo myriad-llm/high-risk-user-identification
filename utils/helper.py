@@ -32,13 +32,14 @@ def remap_data(
 
 
 def pad_collate(batch):
-    seq, time_diff, labels, msisdn = zip(*batch)
+    seqs, time_diffs, labels, msisdns, seq_lens = zip(*batch)
 
-    seq_padded = pad_sequence(seq, batch_first=True)
-    time_diff_padded = pad_sequence(time_diff, batch_first=True)
+    seq_padded = pad_sequence(seqs, batch_first=True)
+    time_diff_padded = pad_sequence(time_diffs, batch_first=True)
     if labels[0] is not None:
         labels = torch.stack(labels)
-    return seq_padded, time_diff_padded, labels, msisdn
+    seq_lens = torch.tensor(seq_lens, dtype=torch.int32)
+    return seq_padded, time_diff_padded, labels, msisdns, seq_lens
 
 
 def apply_onehot(df: pd.DataFrame, apply_cols: Dict[str, int]) -> pd.DataFrame:
@@ -62,6 +63,14 @@ def add_open_count(df: pd.DataFrame) -> pd.DataFrame:
     df["open_count"] = df["open_count"].astype("int32")
     df.drop(columns=["open_datetime"], axis=1, inplace=True)
     return df
+
+def add_static_features(df: pd.DataFrame) -> pd.DataFrame:
+    static_data = train_data.groupby(groupby_columns).agg(
+        avg_dollar_amt=('Amount', 'mean'),
+        std_dollar_amt=('Amount', 'std'),
+        top_mcc=('MCC', lambda x: get_top_item(x)),
+        top_chip=('Use Chip', lambda x: get_top_item(x)),
+    )
 
 
 def gen_seq_ids(df: pd.DataFrame) -> Dict[str, List[int]]:

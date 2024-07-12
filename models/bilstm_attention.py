@@ -16,50 +16,6 @@ from torch.optim import Optimizer
 
 OptimizerCallable = Callable[[Iterable], Optimizer]
 
-
-class MultiHeadAttention(nn.Module):
-    def __init__(self, input_size, hidden_size, num_heads):
-        super().__init__()
-
-        self.num_heads = num_heads
-        self.hidden_size = hidden_size
-
-        self.query = nn.Linear(input_size, hidden_size * num_heads)
-        self.key = nn.Linear(input_size, hidden_size * num_heads)
-        self.value = nn.Linear(input_size, hidden_size * num_heads)
-
-        self.fc_out = nn.Linear(hidden_size * num_heads, hidden_size * 8)
-
-    def forward(self, x):
-        batch_size = x.size(0)
-        Q = self.query(x)
-        K = self.key(x)
-        V = self.value(x)
-
-        # 分割头
-        Q = Q.view(batch_size, -1, self.num_heads, self.hidden_size).transpose(1, 2)
-        K = K.view(batch_size, -1, self.num_heads, self.hidden_size).transpose(1, 2)
-        V = V.view(batch_size, -1, self.num_heads, self.hidden_size).transpose(1, 2)
-
-        # 计算注意力得分
-        attention_scores = torch.matmul(Q, K.transpose(-2, -1)) / (
-            self.hidden_size**0.5
-        )
-        attention_weights = F.softmax(attention_scores, dim=-1)
-
-        # 加权求和
-        attention_output = torch.matmul(attention_weights, V)
-        attention_output = (
-            attention_output.transpose(1, 2)
-            .contiguous()
-            .view(batch_size, -1, self.hidden_size * self.num_heads)
-        )
-
-        output = self.fc_out(attention_output)
-
-        return output
-
-
 class BiLSTMWithImprovedAttention(L.LightningModule):
     def __init__(
         self,
@@ -76,6 +32,7 @@ class BiLSTMWithImprovedAttention(L.LightningModule):
         self.save_hyperparameters()
         self.optimizer = optimizer
 
+
         # 双向LSTM层
         self.lstm = nn.LSTM(
             input_size,
@@ -87,10 +44,17 @@ class BiLSTMWithImprovedAttention(L.LightningModule):
         )
 
         # 多头注意力机制
-        self.attention = MultiHeadAttention(hidden_size * 2, attention_size, num_heads)
+        # self.attention = MultiHeadAttention(hidden_size * 2, attention_size, num_heads)
+        self.multi_head_attention = nn.MultiheadAttention(
+            embed_dim=hidden_size * 2,
+            num_heads=num_heads,
+            dropout=dropout_rate,
+            batch_first=True,
+        )
+            
 
         # Dropout层
-        self.dropout = nn.Dropout(dropout_rate)
+        # self.dropout = nn.Dropout(dropout_rate)
 
         # 全连接层
         self.fc = nn.Linear(hidden_size * 2, num_classes)
@@ -101,24 +65,33 @@ class BiLSTMWithImprovedAttention(L.LightningModule):
         self.train_metrics = metrics.clone(prefix="train_")
         self.valid_metrics = metrics.clone(prefix="valid_")
 
-    def forward(self, x):
+    def forward(self, x, seq_lens):
+        b, max_seq_len, dim = x.size()
         # LSTM层
-        lstm_out, _ = self.lstm(x)
+        lstm_out, _ = self.lstm(x) # (batch_size, seq_len, hidden_size * 2)
+
+        padding_mask_forward = self.gen_padding_mask(max_seq_len=max_seq_len, seq_lens=seq_lens)
 
         # Dropout
-        lstm_out = self.dropout(lstm_out)
+        # lstm_out = self.dropout(lstm_out)
 
         # 多头注意力机制
-        attention_output = self.attention(lstm_out)
-        attention_output = attention_output[:, -1, :]
-        output = self.fc(attention_output)
+        attention_output, _ = self.multi_head_attention(
+            query=lstm_out,
+            key=lstm_out,
+            value=lstm_out,
+            key_padding_mask=padding_mask_forward,
+        )
+        batch_indices = torch.arange(b).to(lstm_out.device)
+        last_attention_output = attention_output[batch_indices, seq_lens - 1, :]
+        output = self.fc(last_attention_output)
         return output
 
     def training_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        seqs, _, labels, _ = batch
+        seqs, _, labels, _, seq_lens  = batch
         labels = torch.argmax(labels, dim=1)
 
-        outputs = self(seqs)
+        outputs = self(seqs, seq_lens)
         loss = self.loss_fn(outputs, labels)
 
         self.log("train_loss", loss.item(), sync_dist=True)
@@ -132,10 +105,10 @@ class BiLSTMWithImprovedAttention(L.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        seqs, _, labels, _ = batch
+        seqs, _, labels, _, seq_lens= batch
         labels = torch.argmax(labels, dim=1)
 
-        outputs = self(seqs)
+        outputs = self(seqs, seq_lens)
         loss = self.loss_fn(outputs, labels)
 
         self.log("val_loss", loss.item(), sync_dist=True)
@@ -160,12 +133,18 @@ class BiLSTMWithImprovedAttention(L.LightningModule):
         return optim
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        seqs, _, _, msisdns = batch
+        seqs, _, _, msisdns, seq_lens = batch
         outputs = torch.argmax(
-            torch.softmax(self(seqs), dim=1),
+            torch.softmax(self(seqs, seq_lens), dim=1),
             dim=1,
         )
         return outputs, msisdns
 
     def loss_fn(self, outputs, labels):
         return F.cross_entropy(outputs, labels)
+
+    def gen_padding_mask(self, max_seq_len, seq_lens):
+        seq_range = torch.arange(max_seq_len).unsqueeze(0).to(self.device)  # [1, seq]
+        seq_lens_expanded = seq_lens.unsqueeze(1).to(self.device)  # [b, 1]
+        padding_mask = seq_range >= seq_lens_expanded  # [b, seq]
+        return padding_mask
