@@ -39,13 +39,21 @@ CUDA_VISIBLE_DEVICES=2 python main.py predict --config ./configs/<name>.yaml
 
 if you want to make the `feature_num` in the config file self-adapting to the dataset, you must define the `feature_num` attribute in the datamodule to return the feature number.
 
+```python
+class CallRecordsDataModule(pl.LightningDataModule):
+    @property
+    def feature_num(self):
+        ...
+        return feature_num
+```
+
 Correspondingly, you must add the `input_size` parameter in the model.
 
 ```python
 class MyModel(LightningModule):
-    def __init__(self, feature_num, ...):
+    def __init__(self, input_size, ...):
         super().__init__()
-        self.feature_num = feature_num
+        self.input_size = input_size
         ...
 ```
 
@@ -56,4 +64,3 @@ If `feature_num` not exist in the config file, it will return an error like this
 w_ih = Parameter(torch.empty((gate_size, layer_input_size), **factory_kwargs))
 TypeError: empty(): argument 'size' failed to unpack the object at pos 2 with error "type must be tuple of ints,but got NoneType"
 ```
-
