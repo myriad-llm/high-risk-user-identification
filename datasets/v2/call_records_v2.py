@@ -212,13 +212,15 @@ class CallRecordsV2(Dataset):
             *[[col] for col in CATEGORICAL_COLUMNS],
         ]
 
+        def nanNone(x: pd.DataFrame):
+            return x.where(pd.notnull(x), "None")
+
+        for cols in sub_columns:
+            for col in cols:
+                df[col] = nanNone(df[col])
+
         log.info("label fit transform")
         for cols in tqdm.tqdm(sub_columns):
-            # enc = LabelEncoder()
-            # for col in tqdm.tqdm(cols, desc="fit", leave=True):
-            #     enc.fit(df[col])
-            # for col in tqdm.tqdm(cols, desc="transform", leave=True):
-            #     df[col] = enc.transform(df[col])
             for col in cols:
                 LabelEncoder().fit_transform(df[col])
 

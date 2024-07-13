@@ -18,10 +18,10 @@ class CallRecordsV2DataModule(L.LightningDataModule):
         mlm_probability: float,
         seq_len: int,
         num_bins: int,
-        flatten: int,
+        flatten: bool,
         stride: int,
         adap_thres: int,
-        return_labels: int,
+        return_labels: bool,
     ) -> None:
         super().__init__()
 
