@@ -5,19 +5,16 @@ import torch
 from lightning.pytorch.utilities.types import OptimizerLRScheduler
 from torch import Tensor
 from torchmetrics.functional import accuracy
-from transformers import BertConfig
-from transformers import (
-    BertForSequenceClassification as HuBertForSequenceClassification,
-)
+from transformers import BertConfig, BertForSequenceClassification
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 
-class BertForSequenceClassification(L.LightningModule):
+class BertClassification(L.LightningModule):
     def __init__(
         self,
         input_size: int,
         vocab_size: int,
-        hidden_size: int = 1152,
+        hidden_size: int,
         num_hidden_layers: int = 12,
         num_classes: int = 2,
     ) -> None:
@@ -25,7 +22,7 @@ class BertForSequenceClassification(L.LightningModule):
 
         self.num_classes = num_classes
         self.accuracy = accuracy
-        self.model = HuBertForSequenceClassification(
+        self.model = BertForSequenceClassification(
             BertConfig(
                 vocab_size=vocab_size,
                 hidden_size=hidden_size,
