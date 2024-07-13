@@ -58,7 +58,7 @@ class BertClassification(L.LightningModule):
             return_dict=True,
         )
 
-        self.log("train-loss", outputs.loss, batch_size=len(batch))
+        self.log("train-loss", outputs.loss, sync_dist=True)
 
         metrics = self.train_metrics(
             torch.argmax(outputs.logits, 1),
@@ -67,12 +67,12 @@ class BertClassification(L.LightningModule):
         self.log_dict(
             metrics,
             prog_bar=True,
-            batch_size=len(batch),
+            sync_dist=True,
         )
 
         return outputs.loss
 
-    def validation_step(self, batch, batch_idx) -> None:
+    def validation_step(self, batch, batch_idx) -> Tensor:
         labels = (batch["labels"][:, 0] == 1).long().to(self.device)
 
         outputs: SequenceClassifierOutput = self.model(
@@ -80,17 +80,19 @@ class BertClassification(L.LightningModule):
             labels=labels,
             return_dict=True,
         )
-        self.log("val-loss", outputs.loss, batch_size=len(batch))
+        self.log("val-loss", outputs.loss, sync_dist=True)
 
-        metrics = self.valid_metrics(
+        self.valid_metrics.update(
             torch.argmax(outputs.logits, 1),
             labels,
         )
-        self.log_dict(
-            metrics,
-            prog_bar=True,
-            batch_size=len(batch),
-        )
+
+        return outputs.loss
+
+    def on_validation_epoch_end(self):
+        metrics = self.valid_metrics.compute()
+        self.log_dict(metrics, sync_dist=True, on_step=False, on_epoch=True)
+        self.valid_metrics.reset()
 
     def predict_step(self, batch, batch_idx):
         labels = (batch["labels"][:, 0] == 1).long().to(self.device)
