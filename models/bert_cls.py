@@ -34,18 +34,22 @@ class BertClassification(L.LightningModule):
         )
 
     def training_step(self, batch, batch_idx) -> Tensor:
+        labels = (batch["labels"][:, 0] == 1).long().to(self.device)
+
         outputs: SequenceClassifierOutput = self.model(
             input_ids=batch["input_ids"],
-            labels=batch["labels"],
+            labels=labels,
             return_dict=True,
         )
         self.log("train-loss", outputs.loss, batch_size=len(batch))
         return outputs.loss
 
     def validation_step(self, batch, batch_idx) -> None:
+        labels = (batch["labels"][:, 0] == 1).long().to(self.device)
+
         outputs: SequenceClassifierOutput = self.model(
             input_ids=batch["input_ids"],
-            labels=batch["labels"],
+            labels=labels,
             return_dict=True,
         )
         self.log("val-loss", outputs.loss, batch_size=len(batch))
@@ -54,16 +58,18 @@ class BertClassification(L.LightningModule):
         predicted_labels = torch.argmax(logits, 1)
         acc = self.accuracy(
             predicted_labels,
-            batch["label"],
+            labels,
             num_classes=self.num_classes,
             task="multiclass",
         )
         self.log("val-acc", acc, batch_size=len(batch), prog_bar=True)
 
     def predict_step(self, batch, batch_idx):
+        labels = (batch["labels"][:, 0] == 1).long().to(self.device)
+
         outputs: SequenceClassifierOutput = self.model(
             input_ids=batch["input_ids"],
-            labels=batch["labels"],
+            labels=labels,
             return_dict=True,
         )
 
