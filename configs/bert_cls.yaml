@@ -1,0 +1,42 @@
+# lightning.pytorch==2.3.1
+seed_everything: 123
+ckpt_path: null
+trainer:
+  logger:
+    class_path: lightning.pytorch.loggers.WandbLogger
+    init_args:
+      project: 'BERT-Classification'
+      save_dir: './wandb/${trainer.logger.init_args.project}'
+      log_model: true
+  max_epochs: 10
+  default_root_dir: ./lightning_logs/${trainer.logger.init_args.project}
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: 'val-acc'
+        mode: 'max'
+        save_top_k: 10
+        filename: '{epoch}-{val-acc:.3f}'
+        verbose: false
+model:
+  class_path: models.BertClassification
+  init_args:
+    vocab_size: 6904
+    hidden_size: 1152
+    num_hidden_layers: 12
+    num_classes: 2
+data:
+  class_path: datasets.CallRecordsDataModule
+  init_args:
+    data_dir: './data'
+    batch_size: 16
+    seed: 12
+    num_workers: 32
+    mlm: true
+    mlm_probability: 0.15
+    seq_len: 16
+    num_bins: 10
+    flatten: true
+    stride: 5
+    adap_thres: 100000000
+    return_labels: true
