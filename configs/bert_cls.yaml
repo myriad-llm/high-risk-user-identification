@@ -5,18 +5,18 @@ trainer:
   logger:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
-      project: 'BERT-Classification'
-      save_dir: './wandb/${trainer.logger.init_args.project}'
+      project: "BERT-Classification"
+      save_dir: "./wandb/${trainer.logger.init_args.project}"
       log_model: true
   max_epochs: 10
   default_root_dir: ./lightning_logs/${trainer.logger.init_args.project}
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
-        monitor: 'val-acc'
-        mode: 'max'
+        monitor: "val-acc"
+        mode: "max"
         save_top_k: 10
-        filename: '{epoch}-{val-acc:.3f}'
+        filename: "{epoch}-{val-acc:.3f}"
         verbose: false
 model:
   class_path: models.BertClassification
@@ -28,13 +28,13 @@ model:
 data:
   class_path: datasets.CallRecordsV2DataModule
   init_args:
-    data_dir: './data'
-    batch_size: 16
+    data_dir: "./data"
+    batch_size: 128
     seed: 12
-    num_workers: 32
+    num_workers: 64
     mlm: true
     mlm_probability: 0.15
-    seq_len: 16
+    seq_len: 32
     num_bins: 10
     flatten: true
     stride: 5
