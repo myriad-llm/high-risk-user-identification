@@ -206,6 +206,8 @@ class CallRecordsV2(Dataset):
             df[:train_len].copy(),
             df[train_len:].copy(),
         )
+        train_labels_df.reset_index(drop=True, inplace=True)
+        val_records_df.reset_index(drop=True, inplace=True)
         del df
 
         self.data, self.labels, self.window_label = self._prepare_samples(
