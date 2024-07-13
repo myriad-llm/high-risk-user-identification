@@ -1,5 +1,2 @@
 from .call_records_v2 import CallRecordsV2
-from .data_collator import (
-    DataCollatorForLanguageModeling,
-    TransDataCollatorForLanguageModeling,
-)
+from .call_records_v2_dm import CallRecordsV2DataModule

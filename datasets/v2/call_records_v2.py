@@ -74,7 +74,7 @@ class CallRecordsV2(Dataset):
         self,
         root: Union[str, Path],
         mlm,
-        seq_len=23,
+        seq_len=16,
         num_bins=10,
         flatten=False,
         stride=5,
@@ -107,7 +107,7 @@ class CallRecordsV2(Dataset):
             raise RuntimeError("Dataset not found.")
 
         self._load_data()
-        # self._save_legacy_data()
+        self._save_legacy_data()
 
     @property
     def raw_folder(self) -> str:

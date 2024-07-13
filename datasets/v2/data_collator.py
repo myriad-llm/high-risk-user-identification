@@ -5,7 +5,7 @@ from transformers import DataCollatorForLanguageModeling
 from transformers.data.data_collator import _torch_collate_batch
 
 
-class TransDataCollatorForLanguageModeling(DataCollatorForLanguageModeling):
+class CallRecordsDataCollatorForLanguageModeling(DataCollatorForLanguageModeling):
     def __call__(
         self, examples: List[Union[List[int], torch.Tensor, Dict[str, torch.Tensor]]]
     ) -> Dict[str, torch.Tensor]:
