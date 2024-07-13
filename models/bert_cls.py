@@ -12,13 +12,14 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 class BertClassification(L.LightningModule):
     def __init__(
         self,
-        input_size: int,
+        input_size,
         vocab_size: int,
         hidden_size: int,
         num_hidden_layers: int = 12,
         num_classes: int = 2,
     ) -> None:
         super().__init__()
+        self.save_hyperparameters()
 
         self.num_classes = num_classes
         self.accuracy = accuracy
@@ -73,5 +74,5 @@ class BertClassification(L.LightningModule):
         return predicted_labels, None
 
     def configure_optimizers(self) -> OptimizerLRScheduler:
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
