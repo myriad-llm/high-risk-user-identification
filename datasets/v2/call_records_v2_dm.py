@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader, Dataset, random_split
 from transformers import BertTokenizer
 
 from .call_records_v2 import CallRecordsV2
-from .data_collator import CallRecordsDataCollatorForLanguageModeling
+from .data_collator import *
 
 
 class CallRecordsV2DataModule(L.LightningDataModule):
@@ -22,6 +22,7 @@ class CallRecordsV2DataModule(L.LightningDataModule):
         stride: int,
         adap_thres: int,
         return_labels: bool,
+        collator_fn: str,
     ) -> None:
         super().__init__()
 
@@ -48,7 +49,7 @@ class CallRecordsV2DataModule(L.LightningDataModule):
             **self.vocab.get_special_tokens(),
         )
 
-        self.collator_fn = CallRecordsDataCollatorForLanguageModeling(
+        self.collator_fn = eval(collator_fn)(
             tokenizer=self.tokenizer,
             mlm=mlm,
             mlm_probability=mlm_probability,

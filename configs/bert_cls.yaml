@@ -40,3 +40,4 @@ data:
     stride: 5
     adap_thres: 100000000
     return_labels: true
+    collator_fn: CallRecordsDataCollatorForClassification

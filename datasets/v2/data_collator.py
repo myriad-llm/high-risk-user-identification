@@ -1,14 +1,15 @@
 from typing import Dict, List, Tuple, Union
 
 import torch
+from torch import Tensor
 from transformers import DataCollatorForLanguageModeling
 from transformers.data.data_collator import _torch_collate_batch
 
 
 class CallRecordsDataCollatorForLanguageModeling(DataCollatorForLanguageModeling):
     def __call__(
-        self, examples: List[Union[List[int], torch.Tensor, Dict[str, torch.Tensor]]]
-    ) -> Dict[str, torch.Tensor]:
+        self, examples: List[Union[List[int], Tensor, Dict[str, Tensor]]]
+    ) -> Dict[str, Tensor]:
         batch = _torch_collate_batch(examples, self.tokenizer)
         sz = batch.shape
         if self.mlm:
@@ -21,7 +22,7 @@ class CallRecordsDataCollatorForLanguageModeling(DataCollatorForLanguageModeling
                 labels[labels == self.tokenizer.pad_token_id] = -100
             return {"input_ids": batch, "labels": labels}
 
-    def mask_tokens(self, inputs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def mask_tokens(self, inputs: Tensor) -> Tuple[Tensor, Tensor]:
         """
         Prepare masked tokens inputs/labels for masked language modeling: 80% MASK, 10% random, 10% original.
         """
@@ -68,3 +69,18 @@ class CallRecordsDataCollatorForLanguageModeling(DataCollatorForLanguageModeling
 
         # The rest of the time (10% of the time) we keep the masked input tokens unchanged
         return inputs, labels
+
+
+class CallRecordsDataCollatorForClassification(
+    CallRecordsDataCollatorForLanguageModeling
+):
+    def __call__(
+        self, examples: List[Union[List[int], Tensor, Dict[str, Tensor]]]
+    ) -> Dict[str, Tensor]:
+        example = [t[0] for t in examples]
+        label_example = [t[1] for t in examples]
+
+        batch = _torch_collate_batch(example, self.tokenizer)
+        label_batch = _torch_collate_batch(label_example, self.tokenizer)
+
+        return {"input_ids": batch, "labels": label_batch}
