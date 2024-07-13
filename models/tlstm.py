@@ -51,7 +51,7 @@ class TimeLSTM(L.LightningModule):
         dropout_rate: float,
         num_heads: int,
         optimizer: OptimizerCallable,
-        bidirectional: bool=False,
+        bidirectional: bool = False,
     ):
         # assumes that batch_first is always true
         super().__init__()
@@ -64,6 +64,8 @@ class TimeLSTM(L.LightningModule):
         self.num_classes = num_classes
         self.num_heads = num_heads
         self.tlstm_unit = TLSTM_Unit(self.input_size, self.hidden_size)
+        # 全局池化层
+        self.global_pooling = nn.AdaptiveAvgPool1d(1)
         # 注意力机制
         self.multi_head_attention = nn.MultiheadAttention(
             embed_dim=self.hidden_size,
@@ -72,7 +74,13 @@ class TimeLSTM(L.LightningModule):
             batch_first=True,
         )
         # self.dropout = nn.Dropout(dropout_rate)
-        self.fc = nn.Linear(hidden_size, num_classes)
+        self.fc = nn.Linear(hidden_size*2, num_classes)
+        # self.mlp = nn.Sequential(
+        #     nn.Linear(hidden_size * 2, hidden_size),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_size, num_classes),
+        #     # nn.Dropout(dropout_rate),
+        # )
 
         metrics = MetricCollection(
             [
@@ -105,14 +113,19 @@ class TimeLSTM(L.LightningModule):
         # gen padding_mask
         padding_mask = self.gen_padding_mask(seq, seq_lens)
 
+        global_features = self.global_pooling(outputs.permute(0, 2, 1)).squeeze(-1)
+
         attention_output, _ = self.multi_head_attention(
             query=outputs, key=outputs, value=outputs, key_padding_mask=padding_mask
         )
         batch_indices = torch.arange(b).to(outputs.device)
         last_output = attention_output[batch_indices, seq_lens - 1, :]
+        # 融合全局特征
+        last_output = torch.cat([last_output, global_features], dim=1)
         # last_output = torch.stack([outputs[i, seq_lens[i] - 1, :] for i in range(b)])
         # last_output = self.dropout(outputs[-1])
         output = self.fc(last_output)
+        # output = self.mlp(last_output)
         return output
 
     def training_step(self, batch, batch_idx) -> STEP_OUTPUT:
@@ -162,11 +175,23 @@ class TimeLSTM(L.LightningModule):
         )
         self.valid_metrics.reset()
 
-    def configure_optimizers(self) -> torch.optim.Optimizer:
+    def configure_optimizers(self):
         optim = self.optimizer(
             self.parameters(),
         )
-        return optim
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer=optim,
+            mode="max",
+            patience=5,
+            factor=0.5,
+        )
+        return {
+            "optimizer": optim,
+            "lr_scheduler": {
+                "scheduler": lr_scheduler,
+                "monitor": "valid_BinaryF1Score",
+            }
+        }
 
     def loss_fn(self, outputs, labels):
         return F.cross_entropy(outputs, labels)

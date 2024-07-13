@@ -37,14 +37,14 @@ Before predict, you need to modify the `ckpt_path` in the config file to determi
 CUDA_VISIBLE_DEVICES=2 python main.py predict --config ./configs/<name>.yaml
 ```
 
-if you want to make the `feature_num` in the config file self-adapting to the dataset, you must define the `feature_num` attribute in the datamodule to return the feature number.
+if you want to make the `feature_dim` in the config file self-adapting to the dataset, you must define the `feature_dim` attribute in the datamodule to return the feature number.
 
 ```python
 class CallRecordsDataModule(pl.LightningDataModule):
     @property
-    def feature_num(self):
+    def feature_dim(self):
         ...
-        return feature_num
+        return feature_dim
 ```
 
 Correspondingly, you must add the `input_size` parameter in the model.
