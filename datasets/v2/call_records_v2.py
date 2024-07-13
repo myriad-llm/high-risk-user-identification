@@ -25,6 +25,7 @@ log = logger.get_logger(
 def read_records(path: str) -> pd.DataFrame:
     dtypes = {
         "msisdn": "str",
+        "other_party": "str",
         **DTAETIME_COLUMNS_TYPE,
         **NUMERIC_COLUMNS_TYPE,
         **AREA_CODE_COLUMNS_TYPE,
@@ -32,7 +33,7 @@ def read_records(path: str) -> pd.DataFrame:
         **CATEGORICAL_COLUMNS_TYPE,
     }
     usecols = (
-        ["msisdn"]
+        ["msisdn", "other_party"]
         + DTAETIME_COLUMNS
         + NUMERIC_COLUMNS
         + AREA_CODE_COLUMNS
@@ -186,10 +187,16 @@ class CallRecordsV2(Dataset):
         train_len = len(train_records_df)
 
         df = pd.concat([train_records_df, val_records_df], ignore_index=True)
-        msisdn2ids = {msisdn: idx for idx, msisdn in enumerate(df["msisdn"].unique())}
 
+        msisdn2ids = {msisdn: idx for idx, msisdn in enumerate(df["msisdn"].unique())}
         df["msisdn"] = df["msisdn"].map(msisdn2ids)
         train_labels_df["msisdn"] = train_labels_df["msisdn"].map(msisdn2ids)
+
+        other_party2ids = {
+            other_party: idx
+            for idx, other_party in enumerate(df["other_party"].unique())
+        }
+        df["other_party"] = df["other_party"].map(other_party2ids)
 
         df = self._encode_data(df)
 

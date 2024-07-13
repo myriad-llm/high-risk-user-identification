@@ -2,6 +2,7 @@ from typing import Dict, List
 
 TIME_FORMAT: Dict[str, str] = {
     "start_time": "%Y%m%d%H%M%S",
+    "end_time": "%Y%m%d%H%M%S",
     "open_datetime": "%Y%m%d%H%M%S",
 }
 DTAETIME_COLUMNS_TYPE: Dict[str, str] = {key: "str" for key in TIME_FORMAT}

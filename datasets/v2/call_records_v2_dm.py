@@ -61,7 +61,7 @@ class CallRecordsV2DataModule(L.LightningDataModule):
 
     @property
     def feature_dim(self):
-        return 18
+        return 20
 
     def dataloader(self, dataset: Dataset, shuffle: bool = False):
         return DataLoader(

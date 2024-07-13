@@ -47,7 +47,7 @@ class BertClassification(L.LightningModule):
             ]
         )
         self.train_metrics = metrics.clone(prefix="train-")
-        self.valid_metrics = metrics.clone(prefix="valid-")
+        self.valid_metrics = metrics.clone(prefix="val-")
 
     def training_step(self, batch, batch_idx) -> Tensor:
         labels = (batch["labels"][:, 0] == 1).long().to(self.device)
@@ -80,7 +80,7 @@ class BertClassification(L.LightningModule):
             labels=labels,
             return_dict=True,
         )
-        self.log("valid-loss", outputs.loss, batch_size=len(batch))
+        self.log("val-loss", outputs.loss, batch_size=len(batch))
 
         metrics = self.valid_metrics(
             torch.argmax(outputs.logits, 1),
