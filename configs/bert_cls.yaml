@@ -20,7 +20,7 @@ trainer:
       init_args:
         monitor: "val-BinaryF1Score"
         mode: "max"
-        save_top_k: 10
+        save_top_k: 3
         filename: "{epoch}-{val-BinaryF1Score:.3f}"
         verbose: false
     - class_path: callbacks.BertPredictionWriter

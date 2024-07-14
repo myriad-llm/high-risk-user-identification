@@ -68,6 +68,7 @@ class BertPredictionWriter(BasePredictionWriter):
             return most_common_is_sa[0]
 
         res = res.groupby("msisdn").apply(determine_is_sa).reset_index()
+        res.columns = ["msisdn", "is_sa"]
 
         os.makedirs(self.output_dir, exist_ok=True)
         res.to_csv(
