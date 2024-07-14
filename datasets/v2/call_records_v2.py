@@ -180,6 +180,7 @@ class CallRecordsV2(Dataset):
     def _save_legacy_data(self) -> None:
         path = os.path.join(self.processed_folder, "vocab.nb")
         log.info(f"saving vocab at {path}")
+        os.makedirs(self.processed_folder, exist_ok=True)
         self.vocab.save_vocab(path)
 
         path = os.path.join(self.processed_folder, "train.pkl")
@@ -232,7 +233,7 @@ class CallRecordsV2(Dataset):
             df[:train_len].copy(),
             df[train_len:].copy(),
         )
-        train_labels_df.reset_index(drop=True, inplace=True)
+        train_records_df.reset_index(drop=True, inplace=True)
         predict_records_df.reset_index(drop=True, inplace=True)
         del df
 
@@ -344,11 +345,27 @@ class CallRecordsV2(Dataset):
                 ):  # for GPT2, need to add [BOS] and [EOS] tokens
                     ids = [bos_token] + ids + [eos_token]
                 data.append(ids)
+            if len(user_row_ids) < self.seq_len:
+                ids = user_row_ids
+                ids = [idx for ids_lst in ids for idx in ids_lst]
+                if (
+                    not self.mlm and self.flatten
+                ):
+                    ids = [bos_token] + ids + [eos_token]
+                data.append(ids)
 
             for jdx in range(
                 0, len(user_labels) - self.seq_len + 1, self.records_stride
             ):
                 ids = user_labels[jdx : (jdx + self.seq_len)]
+                labels.append(ids)
+
+                is_sa = 0
+                if len(np.nonzero(ids)[0]) > 0:
+                    is_sa = 1
+                window_label.append(is_sa)
+            if len(user_labels) < self.seq_len:
+                ids = user_labels
                 labels.append(ids)
 
                 is_sa = 0
@@ -399,7 +416,14 @@ class CallRecordsV2(Dataset):
                 ):  # for GPT2, need to add [BOS] and [EOS] tokens
                     ids = [bos_token] + ids + [eos_token]
                 data.append(ids)
-
+            if len(user_row_ids) < self.seq_len:
+                ids = user_row_ids
+                ids = [idx for ids_lst in ids for idx in ids_lst]
+                if (
+                    not self.mlm and self.flatten
+                ):
+                    ids = [bos_token] + ids + [eos_token]
+                data.append(ids)
         """
             ncols = total fields - 1 (special tokens) - 1 (label)
             if bert:

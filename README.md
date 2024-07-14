@@ -2,6 +2,8 @@
 
 ### Datasets
 
+#### CallRecords
+
 ```shell
 mkdir -p data/CallRecords/raw
 ```
@@ -20,6 +22,19 @@ seq: BATCH * SEQ_LEN * FEATURE
 time_diff: BATCH * SEQ_LEN
 
 labels: BATCH * CLASS_NUM  
+
+#### CallRecordsV2
+
+This is for model `CallRecordsV2DataModule`
+
+```shell
+mkdir -p data/CallRecordsV2/raw
+```
+
+Put `trainSet_ans.csv`, `testSet_res.csv` and `validationSet_res.csv` files
+at `data/CallRecordsV2/raw/` directory.
+
+### Use and Dev
 
 Train:
 
