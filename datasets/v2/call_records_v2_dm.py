@@ -43,6 +43,18 @@ class CallRecordsV2DataModule(L.LightningDataModule):
         )
         self.vocab = self.full.vocab
 
+        self.pred = CallRecordsV2(
+            root=data_dir,
+            mlm=mlm,
+            seq_len=seq_len,
+            num_bins=num_bins,
+            flatten=flatten,
+            stride=stride,
+            adap_thres=adap_thres,
+            predict=True,
+        )
+        assert len(self.pred.vocab) == len(self.vocab)
+
         self.tokenizer = BertTokenizer(
             self.vocab.filename,
             do_lower_case=False,
@@ -78,3 +90,6 @@ class CallRecordsV2DataModule(L.LightningDataModule):
 
     def val_dataloader(self) -> DataLoader:
         return self.dataloader(self.val)
+
+    def predict_dataloader(self) -> DataLoader:
+        return self.dataloader(self.pred)

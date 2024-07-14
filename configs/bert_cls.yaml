@@ -18,6 +18,10 @@ trainer:
         save_top_k: 10
         filename: "{epoch}-{val-BinaryF1Score:.3f}"
         verbose: false
+    - class_path: callbacks.BertPredictionWriter
+      init_args:
+        output_dir: "./predictions/${trainer.logger.init_args.project}"
+        write_interval: "epoch"
 model:
   class_path: models.BertClassification
   init_args:
@@ -37,7 +41,7 @@ data:
     seq_len: 24
     num_bins: 10
     flatten: true
-    stride: 5
+    stride: 12
     adap_thres: 100000000
     return_labels: true
     collator_fn: CallRecordsDataCollatorForClassification

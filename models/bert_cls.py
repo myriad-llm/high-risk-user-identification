@@ -95,11 +95,9 @@ class BertClassification(L.LightningModule):
         self.valid_metrics.reset()
 
     def predict_step(self, batch, batch_idx):
-        labels = (batch["labels"][:, 0] == 1).long().to(self.device)
-
+        msisdns = batch["msisdns"]
         outputs: SequenceClassifierOutput = self.model(
             input_ids=batch["input_ids"],
-            labels=labels,
             return_dict=True,
         )
 
@@ -107,8 +105,9 @@ class BertClassification(L.LightningModule):
             torch.softmax(outputs.logits, dim=1),
             dim=1,
         )
-        return predicted_labels, None
+
+        return predicted_labels, msisdns
 
     def configure_optimizers(self) -> OptimizerLRScheduler:
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5, weight_decay=0.01)
         return optimizer

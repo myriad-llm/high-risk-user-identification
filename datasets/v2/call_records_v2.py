@@ -81,6 +81,7 @@ class CallRecordsV2(Dataset):
         stride=5,
         adap_thres=10**8,
         return_labels=False,
+        predict=False,
     ) -> None:
         if isinstance(root, str):
             root = os.path.expanduser(root)
@@ -93,12 +94,16 @@ class CallRecordsV2(Dataset):
         self.records_stride = stride
         self.vocab = Vocabulary(adap_thres)
 
+        self.msisdn2Indices = None
+        self.indices2msisdn = None
+
         self.data = None
         self.labels = None
         self.window_label = None
         self.ncols = None
 
-        self.return_labels = return_labels
+        self.return_labels = return_labels if not predict else False
+        self.predict = predict
 
         # if self._check_legacy_exists():
         #     self._load_legacy_data()
@@ -119,18 +124,26 @@ class CallRecordsV2(Dataset):
         return os.path.join(self.root, self.__class__.__name__, "processed")
 
     def __getitem__(self, index):
-        if self.flatten:
-            return_data = torch.tensor(self.data[index], dtype=torch.long)
-        else:
-            return_data = torch.tensor(self.data[index], dtype=torch.long).reshape(
-                self.seq_len, -1
-            )
+        data = self.data[index]
 
-        if self.return_labels:
-            return_data = (
-                return_data,
-                torch.tensor(self.labels[index], dtype=torch.long),
-            )
+        if self.flatten:
+            return_data = torch.tensor(data, dtype=torch.long)
+        else:
+            return_data = torch.tensor(data, dtype=torch.long).reshape(self.seq_len, -1)
+
+        token, _, _ = self.vocab.id2token[data[0]]
+        msisdn = self.indices2msisdn[token]
+
+        self.vocab.get_id
+        return_data = (
+            return_data,
+            (
+                torch.tensor(self.labels[index], dtype=torch.long)
+                if self.return_labels
+                else None
+            ),
+            msisdn,
+        )
 
         return return_data
 
@@ -181,38 +194,47 @@ class CallRecordsV2(Dataset):
         train_labels_df = read_labels(
             os.path.join(self.raw_folder, "trainSet_ans.csv"),
         )
-        val_records_df = read_records(
+        predict_records_df = read_records(
             os.path.join(self.raw_folder, "validationSet_res.csv")
         )
         train_len = len(train_records_df)
 
-        df = pd.concat([train_records_df, val_records_df], ignore_index=True)
+        df = pd.concat([train_records_df, predict_records_df], ignore_index=True)
 
-        msisdn2ids = {msisdn: idx for idx, msisdn in enumerate(df["msisdn"].unique())}
-        df["msisdn"] = df["msisdn"].map(msisdn2ids)
-        train_labels_df["msisdn"] = train_labels_df["msisdn"].map(msisdn2ids)
+        self.msisdn2Indices = {
+            msisdn: idx for idx, msisdn in enumerate(df["msisdn"].unique())
+        }
+        self.indices2msisdn = {
+            idx: msisdn for msisdn, idx in self.msisdn2Indices.items()
+        }
 
-        other_party2ids = {
+        df["msisdn"] = df["msisdn"].map(self.msisdn2Indices)
+        train_labels_df["msisdn"] = train_labels_df["msisdn"].map(self.msisdn2Indices)
+
+        self.otherParty2Indices = {
             other_party: idx
             for idx, other_party in enumerate(df["other_party"].unique())
         }
-        df["other_party"] = df["other_party"].map(other_party2ids)
+        df["other_party"] = df["other_party"].map(self.otherParty2Indices)
 
         df = self._encode_data(df)
 
         self._init_vocab(df)
 
-        train_records_df, val_records_df = (
+        train_records_df, predict_records_df = (
             df[:train_len].copy(),
             df[train_len:].copy(),
         )
         train_labels_df.reset_index(drop=True, inplace=True)
-        val_records_df.reset_index(drop=True, inplace=True)
+        predict_records_df.reset_index(drop=True, inplace=True)
         del df
 
-        self.data, self.labels, self.window_label = self._prepare_samples(
-            train_records_df, train_labels_df
-        )
+        if self.predict:
+            self.data = self._prepare_predict_samples(predict_records_df)
+        else:
+            self.data, self.labels, self.window_label = self._prepare_train_samples(
+                train_records_df, train_labels_df
+            )
 
     def _encode_data(self, df: pd.DataFrame) -> pd.DataFrame:
         sub_columns = [
@@ -279,11 +301,11 @@ class CallRecordsV2(Dataset):
                 log.info(f"\tsetting {column} for adaptive softmax")
                 self.vocab.adap_sm_cols.add(column)
 
-    def _prepare_samples(
+    def _prepare_train_samples(
         self,
         train_records_df: pd.DataFrame,
         train_labels_df: pd.DataFrame,
-    ) -> None:
+    ):
         log.info("preparing user level data...")
         data, labels, window_label = [], [], []
 
@@ -304,6 +326,7 @@ class CallRecordsV2(Dataset):
             eos_token = self.vocab.get_id(
                 self.vocab.eos_token, special_token=True
             )  # will be used for GPT2
+
             for jdx in range(
                 0, len(user_row_ids) - self.seq_len + 1, self.records_stride
             ):
@@ -334,9 +357,52 @@ class CallRecordsV2(Dataset):
         """
         self.ncols = len(self.vocab.field_keys) - 2 + (1 if self.mlm else 0)
         log.info(f"ncols: {self.ncols}")
-        log.info(f"total samples: {len(data)}")
+        log.info(f"total train samples: {len(data)}")
 
         return data, labels, window_label
+
+    def _prepare_predict_samples(
+        self,
+        predict_records_df: pd.DataFrame,
+    ):
+        log.info("preparing user level data...")
+        data = []
+
+        records_data, _, columns_names = self._user_level_data(predict_records_df, None)
+
+        log.info("creating call record samples with vocab")
+        for user_idx in tqdm.tqdm(range(len(records_data))):
+            user_row = records_data[user_idx]
+            user_row_ids = self._format_records(user_row, columns_names)
+
+            bos_token = self.vocab.get_id(
+                self.vocab.bos_token, special_token=True
+            )  # will be used for GPT2
+            eos_token = self.vocab.get_id(
+                self.vocab.eos_token, special_token=True
+            )  # will be used for GPT2
+
+            for jdx in range(
+                0, len(user_row_ids) - self.seq_len + 1, self.records_stride
+            ):
+                ids = user_row_ids[jdx : (jdx + self.seq_len)]
+                ids = [idx for ids_lst in ids for idx in ids_lst]  # flattening
+                if (
+                    not self.mlm and self.flatten
+                ):  # for GPT2, need to add [BOS] and [EOS] tokens
+                    ids = [bos_token] + ids + [eos_token]
+                data.append(ids)
+
+        """
+            ncols = total fields - 1 (special tokens) - 1 (label)
+            if bert:
+                ncols += 1 (for sep)
+        """
+        self.ncols = len(self.vocab.field_keys) - 2 + (1 if self.mlm else 0)
+        log.info(f"ncols: {self.ncols}")
+        log.info(f"total predict samples: {len(data)}")
+
+        return data
 
     @staticmethod
     def label_fit_transform(column, enc_type="label"):
@@ -364,32 +430,34 @@ class CallRecordsV2(Dataset):
 
     def _user_level_data(
         self,
-        train_records: pd.DataFrame,
-        train_labels: pd.DataFrame,
+        records: pd.DataFrame,
+        labels: Union[pd.DataFrame, None],
     ) -> Tuple[
         List[List[Union[int, float]]],
-        List[List[int]],
+        Union[List[List[int]], None],
         List[str],
     ]:
-        train_labels_indexed = train_labels.set_index("msisdn")
+        labels_indexed = labels.set_index("msisdn") if labels is not None else None
 
-        records_data, records_labels = [], []
+        records_data, records_labels = [], [] if labels is not None else None
 
-        unique_users = train_records["msisdn"].unique()
-        columns_names = list(train_records.columns)
+        unique_users = records["msisdn"].unique()
+        columns_names = list(records.columns)
 
         for user in tqdm.tqdm(unique_users):
-            user_data = train_records.loc[train_records["msisdn"] == user]
+            user_data = records.loc[records["msisdn"] == user]
             user_records, user_labels = [], []
 
             for _, row in user_data.iterrows():
                 row = list(row)
 
                 user_records.extend(row)
-                user_labels.append(train_labels_indexed.loc[row[0], "is_sa"])
+                if labels is not None:
+                    user_labels.append(labels_indexed.loc[row[0], "is_sa"])
 
             records_data.append(user_records)
-            records_labels.append(user_labels)
+            if labels is not None:
+                records_labels.append(user_labels)
 
         return records_data, records_labels, columns_names
 

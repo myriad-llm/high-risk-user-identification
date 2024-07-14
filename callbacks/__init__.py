@@ -1,3 +1,3 @@
-from .pred_writer import LSTMPredictionWriter
+from .pred_writer import BertPredictionWriter, LSTMPredictionWriter
 
-__all__ = ["LSTMPredictionWriter"]
+__all__ = ["BertPredictionWriter", "LSTMPredictionWriter"]

@@ -78,9 +78,14 @@ class CallRecordsDataCollatorForClassification(
         self, examples: List[Union[List[int], Tensor, Dict[str, Tensor]]]
     ) -> Dict[str, Tensor]:
         example = [t[0] for t in examples]
-        label_example = [t[1] for t in examples]
+        label_example = [t[1] for t in examples] if examples[0][1] is not None else None
+        msisdns = [t[2] for t in examples]
 
         batch = _torch_collate_batch(example, self.tokenizer)
-        label_batch = _torch_collate_batch(label_example, self.tokenizer)
+        label_batch = (
+            _torch_collate_batch(label_example, self.tokenizer)
+            if label_example is not None
+            else None
+        )
 
-        return {"input_ids": batch, "labels": label_batch}
+        return {"input_ids": batch, "labels": label_batch, "msisdns": msisdns}
