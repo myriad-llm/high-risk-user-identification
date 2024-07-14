@@ -8,7 +8,7 @@ trainer:
       project: "BERT-Classification"
       save_dir: "./wandb/${trainer.logger.init_args.project}"
       log_model: true
-  max_epochs: 10
+  max_epochs: 5
   default_root_dir: ./lightning_logs/${trainer.logger.init_args.project}
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
@@ -26,7 +26,7 @@ model:
   class_path: models.BertClassification
   init_args:
     vocab_size: 306048
-    hidden_size: 1280
+    hidden_size: 1216
     num_hidden_layers: 6
     num_classes: 2
 data:
@@ -41,7 +41,7 @@ data:
     seq_len: 24
     num_bins: 10
     flatten: true
-    stride: 12
+    stride: 6
     adap_thres: 100000000
     return_labels: true
     collator_fn: CallRecordsDataCollatorForClassification

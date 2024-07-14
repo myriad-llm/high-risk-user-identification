@@ -126,10 +126,17 @@ class CallRecordsV2(Dataset):
     def __getitem__(self, index):
         data = self.data[index]
 
+        mask = np.ones(len(data), dtype=bool)
+        mask[:: self.seq_len] = False
+
+        data_without_msisdn = np.array(data)[mask].tolist()
+
         if self.flatten:
-            return_data = torch.tensor(data, dtype=torch.long)
+            return_data = torch.tensor(data_without_msisdn, dtype=torch.long)
         else:
-            return_data = torch.tensor(data, dtype=torch.long).reshape(self.seq_len, -1)
+            return_data = torch.tensor(data_without_msisdn, dtype=torch.long).reshape(
+                self.seq_len - 1, -1
+            )
 
         token, _, _ = self.vocab.id2token[data[0]]
         msisdn = self.indices2msisdn[token]
