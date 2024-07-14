@@ -1,6 +1,6 @@
 # lightning.pytorch==2.3.1
 seed_everything: 123
-ckpt_path: "wandb/tlstm/tlstm/qrm7am7q/checkpoints/epoch=40-valid_BinaryF1Score=0.776.ckpt"
+ckpt_path: null
 trainer:
   logger:
     class_path: lightning.pytorch.loggers.WandbLogger
