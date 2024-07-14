@@ -8,9 +8,14 @@ trainer:
       project: "BERT-Classification"
       save_dir: "./wandb/${trainer.logger.init_args.project}"
       log_model: true
-  max_epochs: 3
+  max_epochs: 10
   default_root_dir: ./lightning_logs/${trainer.logger.init_args.project}
   callbacks:
+    - class_path: lightning.pytorch.callbacks.EarlyStopping
+      init_args:
+        monitor: "val-BinaryF1Score"
+        mode: "min"
+        patience: 3
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
         monitor: "val-BinaryF1Score"
@@ -33,7 +38,7 @@ data:
   class_path: datasets.CallRecordsV2DataModule
   init_args:
     data_dir: "./data"
-    batch_size: 64
+    batch_size: 96
     seed: 12
     num_workers: 64
     mlm: true
