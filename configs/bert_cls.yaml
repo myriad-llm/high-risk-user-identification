@@ -8,7 +8,7 @@ trainer:
       project: "BERT-Classification"
       save_dir: "./wandb/${trainer.logger.init_args.project}"
       log_model: true
-  max_epochs: 5
+  max_epochs: 3
   default_root_dir: ./lightning_logs/${trainer.logger.init_args.project}
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
