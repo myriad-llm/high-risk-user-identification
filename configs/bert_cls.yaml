@@ -15,7 +15,7 @@ trainer:
       init_args:
         monitor: "val-BinaryF1Score"
         mode: "min"
-        patience: 3
+        patience: 5
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
         monitor: "val-BinaryF1Score"
@@ -30,9 +30,9 @@ trainer:
 model:
   class_path: models.BertClassification
   init_args:
-    vocab_size: 306048
-    hidden_size: 1216
-    num_hidden_layers: 6
+    vocab_size: 6879
+    hidden_size: 1152
+    num_hidden_layers: 12
     num_classes: 2
 data:
   class_path: datasets.CallRecordsV2DataModule

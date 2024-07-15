@@ -25,7 +25,6 @@ log = logger.get_logger(
 def read_records(path: str) -> pd.DataFrame:
     dtypes = {
         "msisdn": "str",
-        "other_party": "str",
         **DTAETIME_COLUMNS_TYPE,
         **NUMERIC_COLUMNS_TYPE,
         **AREA_CODE_COLUMNS_TYPE,
@@ -33,7 +32,7 @@ def read_records(path: str) -> pd.DataFrame:
         **CATEGORICAL_COLUMNS_TYPE,
     }
     usecols = (
-        ["msisdn", "other_party"]
+        ["msisdn"]
         + DTAETIME_COLUMNS
         + NUMERIC_COLUMNS
         + AREA_CODE_COLUMNS
@@ -219,12 +218,6 @@ class CallRecordsV2(Dataset):
         df["msisdn"] = df["msisdn"].map(self.msisdn2Indices)
         train_labels_df["msisdn"] = train_labels_df["msisdn"].map(self.msisdn2Indices)
 
-        self.otherParty2Indices = {
-            other_party: idx
-            for idx, other_party in enumerate(df["other_party"].unique())
-        }
-        df["other_party"] = df["other_party"].map(self.otherParty2Indices)
-
         df = self._encode_data(df)
 
         self._init_vocab(df)
@@ -348,9 +341,7 @@ class CallRecordsV2(Dataset):
             if len(user_row_ids) < self.seq_len:
                 ids = user_row_ids
                 ids = [idx for ids_lst in ids for idx in ids_lst]
-                if (
-                    not self.mlm and self.flatten
-                ):
+                if not self.mlm and self.flatten:
                     ids = [bos_token] + ids + [eos_token]
                 data.append(ids)
 
@@ -419,9 +410,7 @@ class CallRecordsV2(Dataset):
             if len(user_row_ids) < self.seq_len:
                 ids = user_row_ids
                 ids = [idx for ids_lst in ids for idx in ids_lst]
-                if (
-                    not self.mlm and self.flatten
-                ):
+                if not self.mlm and self.flatten:
                     ids = [bos_token] + ids + [eos_token]
                 data.append(ids)
         """
