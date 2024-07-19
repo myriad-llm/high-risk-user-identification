@@ -302,17 +302,21 @@ class CallRecords(Dataset):
             train_labels_df.set_index("msisdn").loc[train_seq_msisdns].reset_index()
         )
         train_labels_df = pd.get_dummies(
-            train_labels_df["is_sa"], columns=["is_sa"]
-        ).astype("int")
+            train_labels_df["is_sa"], columns=["is_sa"], dtype="int8"
+        )
+        
 
         return (
             (
                 torch.tensor(train_records_df.values, dtype=torch.float32),
+                # torch.sparse_coo_tensor(train_records_df.sparse.to_coo(), dtype=torch.float32),
                 torch.tensor(train_labels_df.values, dtype=torch.float32),
+                # torch.sparse_coo_tensor(train_labels_df.sparse.to_coo(), dtype=torch.float32),
                 train_seq_index_with_time_diff,
             ),
             (
                 torch.tensor(val_records_df.values, dtype=torch.float32),
+                # torch.sparse_coo_tensor(val_records_df.sparse.to_coo(), dtype=torch.float32),
                 None,
                 val_seq_index_with_time_diff,
             ),
@@ -405,8 +409,6 @@ class CallRecords(Dataset):
         addition_train_data = []
         addition_train_labels = []
 
-        times = 4
-        ratio_range = 0.1
         pbar = tqdm(train_data.groupby("msisdn"))
         for msisdn, group in pbar:
             if msisdn == 0:

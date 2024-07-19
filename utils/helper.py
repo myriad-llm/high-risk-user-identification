@@ -48,7 +48,7 @@ def apply_onehot(df: pd.DataFrame, apply_cols: Dict[str, int]) -> pd.DataFrame:
             columns=[f"{apply_col}_{j}" for j in range(onehot_len)],
             data=np.eye(onehot_len)[df[apply_col].values],
         )
-        temp_one_hot = temp_one_hot.astype(pd.SparseDtype("int", 0))
+        temp_one_hot = temp_one_hot.astype(pd.SparseDtype("int8", 0))
         df.drop([apply_col], axis=1, inplace=True)
         df = pd.concat([df, temp_one_hot], axis=1)
     return df
