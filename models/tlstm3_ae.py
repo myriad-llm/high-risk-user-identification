@@ -19,12 +19,14 @@ class Autoencoder(nn.Module):
     def __init__(self, input_dim, encoding_dim):
         super(Autoencoder, self).__init__()
         self.encoder = nn.Sequential(
-            nn.Linear(input_dim, encoding_dim),
-            nn.ReLU()
+            nn.Linear(input_dim, 512),
+            nn.ReLU(),
+            nn.Linear(512, encoding_dim)
         )
         self.decoder = nn.Sequential(
-            nn.Linear(encoding_dim, input_dim),
-            nn.Sigmoid()
+            nn.Linear(encoding_dim, 512),
+            nn.ReLU(),
+            nn.Linear(512, input_dim),
         )
 
     def forward(self, x):
@@ -111,9 +113,10 @@ class TimeLSTM3_AE(L.LightningModule):
         self.bidirectional = bidirectional
         self.num_classes = num_classes
         self.num_heads = num_heads
+        self.ae_encoding_dim = ae_encoding_dim
 
         # TLSTM unit
-        self.tlstm_unit = TLSTM3_Unit(self.input_size, self.hidden_size)
+        self.tlstm_unit = TLSTM3_Unit(self.ae_encoding_dim, self.hidden_size)
 
         # Autoencoder
         self.autoencoder = Autoencoder(self.input_size, ae_encoding_dim)
@@ -255,4 +258,3 @@ class TimeLSTM3_AE(L.LightningModule):
         seq_lens_expanded = seq_lens.unsqueeze(1).to(self.device)  # [b, 1]
         padding_mask = seq_range >= seq_lens_expanded  # [b, seq]
         return padding_mask
-
