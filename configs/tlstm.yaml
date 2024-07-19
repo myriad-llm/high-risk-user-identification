@@ -52,3 +52,5 @@ data:
     num_workers: 2
     time_div: 360
     mask_rate: 0.20
+    aug_ratio: 0.1
+    aug_times: 4
