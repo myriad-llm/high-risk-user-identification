@@ -6,3 +6,4 @@ from .lstm_vae import LSTM_VAE
 from .tlstm import TimeLSTM
 from .vae import VAE
 from .xlstm import xLSTM
+from .tlstm3 import TimeLSTM3

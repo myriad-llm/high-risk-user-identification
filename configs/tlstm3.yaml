@@ -1,0 +1,47 @@
+# lightning.pytorch==2.3.2
+seed_everything: 123
+trainer:
+  logger:
+    class_path: lightning.pytorch.loggers.WandbLogger
+    init_args:
+      project: "tlstm3"
+      save_dir: "./wandb/${trainer.logger.init_args.project}"
+      log_model: true
+  max_epochs: 1000
+  default_root_dir: "./lightning_logs/${trainer.logger.init_args.project}"
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: "valid_BinaryF1Score"
+        mode: "max"
+        save_top_k: 10
+        filename: "{epoch}-{valid_BinaryF1Score:.3f}"
+        verbose: false
+    - class_path: callbacks.LSTMPredictionWriter
+      init_args:
+        output_dir: "./predictions/${trainer.logger.init_args.project}"
+        write_interval: "epoch"
+ckpt_path: null
+model:
+  class_path: models.TimeLSTM3
+  init_args:
+    hidden_size: 32
+    num_classes: 2
+    num_heads: 4
+    dropout_rate: 0.5
+    bidirectional: false
+    optimizer:
+      class_path: torch.optim.AdamW
+      init_args:
+        lr: 1e-4
+        weight_decay: 0.01
+data:
+  class_path: datasets.tlstm3.CallRecordsDataModule
+  init_args:
+    data_dir: "./data"
+    batch_size: 32
+    seed: 12
+    non_seq: false
+    num_workers: 16
+    time_div: 360
+    mask_rate: 0.20
