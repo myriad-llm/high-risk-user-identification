@@ -351,3 +351,4 @@ pretrained_ckpts/
 logs/
 wandb/
 predictions/
+*.ipynb
