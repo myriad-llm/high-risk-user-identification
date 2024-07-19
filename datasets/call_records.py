@@ -77,6 +77,8 @@ class CallRecords(Dataset):
         non_seq: bool = False,
         time_div: int = 3600,
         mask_rate: float = 0.0,
+        aug_ratio: float = 0.0,
+        aug_times: int = 0,
     ) -> None:
         if isinstance(root, str):
             root = os.path.expanduser(root)
