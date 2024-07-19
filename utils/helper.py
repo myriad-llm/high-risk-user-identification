@@ -7,6 +7,7 @@ import torch
 from sklearn.preprocessing import MinMaxScaler
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
+from .augmentation import Augmentation
 
 def generate_value_dict(
     columns: list[str], data: pd.DataFrame, valid: pd.DataFrame
@@ -153,3 +154,39 @@ def add_static_features(df: pd.DataFrame, groupby_column: str="msisdn") -> pd.Da
     static_columns = static_data.columns.to_list()
     static_columns.remove('msisdn')
     return df.merge(static_data, on=groupby_column, how='left'), static_columns
+
+def augment(train_data, train_labels, ratio_range, times):
+    if times == 0:
+        return train_data, train_labels
+
+    addition_train_data = []
+    addition_train_labels = []
+
+    pbar = tqdm(train_data.groupby("msisdn"))
+    for msisdn, group in pbar:
+        if msisdn == 0:
+            continue
+        pbar.set_description(f"Augmenting msisdn {msisdn}")
+        label = train_labels[train_labels["msisdn"] == msisdn].iloc[0]["is_sa"]
+        aug = Augmentation(group, label, "msisdn", "is_sa")
+        # 对正负样本进行平衡 样本比 1:4
+        if label == 1:
+            res_df, res_labels = aug.times(
+                ratio=ratio_range, times=3 + times * 4, method="mask"
+            )
+        else:
+            res_df, res_labels = aug.times(
+                ratio=ratio_range, times=times, method="mask"
+            )
+        addition_train_data.append(res_df)
+        addition_train_labels.append(res_labels)
+    addition_train_data = pd.concat(addition_train_data)
+    addition_train_labels = pd.concat(addition_train_labels)
+    addition_train_data.shape
+    train_data = pd.concat([train_data, addition_train_data], ignore_index=True).reset_index(drop=True)
+    train_labels = pd.concat([train_labels, addition_train_labels], ignore_index=True).reset_index(drop=True)
+    # 按照 msisdn, start_time 排序
+    train_data.sort_values(by=["msisdn", "start_time"]).reset_index(drop=True)
+    train_labels.sort_values(by=["msisdn"]).reset_index(drop=True)
+
+    return train_data, train_labels

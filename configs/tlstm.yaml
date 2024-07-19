@@ -43,7 +43,7 @@ model:
     #     patience: 5
     #     factor: 0.5
 data:
-  class_path: datasets.CallRecordsDataModule
+  class_path: datasets.aug.CallRecordsDataModule
   init_args:
     data_dir: "./data"
     batch_size: 32
@@ -51,6 +51,6 @@ data:
     non_seq: false
     num_workers: 2
     time_div: 360
-    mask_rate: 0.20
+    mask_rate: 0.05
     aug_ratio: 0.1
-    aug_times: 4
+    aug_times: 1

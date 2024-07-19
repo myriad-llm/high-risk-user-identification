@@ -35,7 +35,7 @@ model:
     num_hidden_layers: 12
     num_classes: 2
 data:
-  class_path: datasets.CallRecordsV2DataModule
+  class_path: datasets.v2.CallRecordsV2DataModule
   init_args:
     data_dir: "./data"
     batch_size: 96

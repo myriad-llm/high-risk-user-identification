@@ -8,7 +8,8 @@ from .helper import (
     split_seq_and_time_diff,
     pad_collate,
     examine_data,
-    add_static_features
+    add_static_features,
+    augment
 )
 
 __all__ = [
@@ -21,5 +22,6 @@ __all__ = [
     "split_seq_and_time_diff",
     "pad_collate",
     "examine_data",
-    "add_static_features"
+    "add_static_features",
+    "augment"
 ]
