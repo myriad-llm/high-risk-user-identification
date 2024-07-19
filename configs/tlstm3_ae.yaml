@@ -4,7 +4,7 @@ trainer:
   logger:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
-      project: "tlstm3"
+      project: "tlstm3_ae"
       save_dir: "./wandb/${trainer.logger.init_args.project}"
       log_model: true
   max_epochs: 1000
@@ -23,12 +23,13 @@ trainer:
         write_interval: "epoch"
 ckpt_path: null
 model:
-  class_path: models.TimeLSTM3
+  class_path: models.TimeLSTM3_AE
   init_args:
     hidden_size: 32
     num_classes: 2
     num_heads: 4
     dropout_rate: 0.5
+    ae_encoding_dim: 1868
     bidirectional: false
     optimizer:
       class_path: torch.optim.AdamW
