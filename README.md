@@ -91,8 +91,6 @@ Just don't do this:
 ```python
 class MyModel(LightningModule):
     def __init__(self, input_size: int, ...):
-        super().__init__()
-        self.input_size = input_size
         ...
 ```
 
