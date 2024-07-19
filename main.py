@@ -35,7 +35,7 @@ class MyLightningCLI(LightningCLI):
 def cli_main():
     cli = MyLightningCLI(
         save_config_kwargs={"overwrite": True},
-        parser_kwargs={"parser_mode": "yaml"},
+        parser_kwargs={"parser_mode": "omegaconf"},
     )
 
 
