@@ -8,12 +8,14 @@ import torch
 from torch.utils.data import Dataset
 
 from utils import *
+from utils.augmentation import Augmentation
+from tqdm import tqdm
 
 
 class CallRecords(Dataset):
     resources = [
-        ("cleaned_trainSet_res.csv", "trainSet_ans.csv"),
-        ("cleaned_validationSet_res.csv", None),
+        ("trainSet_res_with_distances.csv", "trainSet_ans.csv"),
+        ("validationSet_res_with_distances.csv", None),
     ]
 
     manifests = [
@@ -77,6 +79,8 @@ class CallRecords(Dataset):
         non_seq: bool = False,
         time_div: int = 3600,
         mask_rate: float = 0.0,
+        aug_ratio: float = 0.0,
+        aug_times: int = 0,
     ) -> None:
         if isinstance(root, str):
             root = os.path.expanduser(root)
@@ -85,6 +89,8 @@ class CallRecords(Dataset):
         self.non_seq = non_seq
         self.time_div = time_div
         self.mask_rate = mask_rate
+        self.aug_ratio = aug_ratio
+        self.aug_times = aug_times
 
         def time_map(x):
             x_div = x / self.time_div
@@ -233,6 +239,8 @@ class CallRecords(Dataset):
         (train_records_df, train_labels_df), (val_records_df, _) = (
             self._load_dataframes()
         )
+
+        train_records_df, train_labels_df = self.augment(train_records_df, train_labels_df, self.aug_ratio, self.aug_times)
 
         remap_column_group = {
             "area_code": self.area_code_columns,
@@ -389,4 +397,42 @@ class CallRecords(Dataset):
                 None,
             ),
         )
+    
+    def augment(self, train_data, train_labels, ratio_range, times):
+        if times == 0:
+            return train_data, train_labels
 
+        addition_train_data = []
+        addition_train_labels = []
+
+        times = 4
+        ratio_range = 0.1
+        pbar = tqdm(train_data.groupby("msisdn"))
+        for msisdn, group in pbar:
+            if msisdn == 0:
+                continue
+            pbar.set_description(f"Augmenting msisdn {msisdn}")
+            label = train_labels[train_labels["msisdn"] == msisdn].iloc[0]["is_sa"]
+            aug = Augmentation(group, label, "msisdn", "is_sa")
+            # 对正负样本进行平衡 样本比 1:4
+            if label == 1:
+                res_df, res_labels = aug.times(
+                    ratio=ratio_range, times=times * 4, method="mask"
+                )
+            else:
+                res_df, res_labels = aug.times(
+                    ratio=ratio_range, times=times, method="mask"
+                )
+            addition_train_data.append(res_df)
+            addition_train_labels.append(res_labels)
+        addition_train_data = pd.concat(addition_train_data)
+        addition_train_labels = pd.concat(addition_train_labels)
+        addition_train_data.shape
+        train_data = pd.concat([train_data, addition_train_data], ignore_index=True).reset_index(drop=True)
+        train_labels = pd.concat([train_labels, addition_train_labels], ignore_index=True).reset_index(drop=True)
+        # 按照 msisdn, start_time 排序
+        train_data.sort_values(by=["msisdn", "start_time"]).reset_index(drop=True)
+        train_labels.sort_values(by=["msisdn"]).reset_index(drop=True)
+
+        return train_data, train_labels
+    

@@ -5,6 +5,7 @@ from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
 
 from datasets import CallRecords
 from utils import pad_collate
+from utils.augmentation import Augmentation
 
 
 class CallRecordsDataModuleBase(L.LightningDataModule):
@@ -16,7 +17,9 @@ class CallRecordsDataModuleBase(L.LightningDataModule):
         non_seq: bool,
         num_workers: int,
         time_div: int = 3600,
-        mask_rate: float = 0.0
+        mask_rate: float = 0.0,
+        aug_ratio: float = 0.0,
+        aug_times: int = 0,
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -26,8 +29,10 @@ class CallRecordsDataModuleBase(L.LightningDataModule):
         self.num_workers = num_workers
         self.time_div = time_div
         self.mask_rate = mask_rate
+        self.aug_ratio = aug_ratio
+        self.aug_times = aug_times
 
-        self.full = CallRecords(root=self.data_dir, predict=False, non_seq=non_seq, time_div=time_div, mask_rate=mask_rate)
+        self.full = CallRecords(root=self.data_dir, predict=False, non_seq=non_seq, time_div=time_div, mask_rate=mask_rate, aug_ratio=aug_ratio, aug_times=aug_times)
         self.pred = CallRecords(root=self.data_dir, predict=True, non_seq=non_seq, time_div=time_div, mask_rate=0.0)
 
     @property
@@ -59,7 +64,7 @@ class CallRecordsDataModule(CallRecordsDataModuleBase):
         super().__init__(data_dir, batch_size, seed, non_seq, num_workers, time_div, mask_rate)
 
         self.train, self.val = random_split(
-            self.full, [0.9, 0.1], generator=torch.Generator().manual_seed(self.seed)
+            self.full, [0.7, 0.3], generator=torch.Generator().manual_seed(self.seed)
         )
 
     def train_dataloader(self):
