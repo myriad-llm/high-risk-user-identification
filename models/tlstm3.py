@@ -17,57 +17,53 @@ OptimizerCallable = Callable[[Iterable], Optimizer]
 
 
 class TLSTM3_Unit(nn.Module):
-    def __init__(self, input_dim, hidden_dim):
+    def __init__(self, input_dim, hidden_dim, peepholes = True):
         super().__init__()
         self.hidden_dim = hidden_dim
+        self.peepholes = peepholes
         # 输入x->W(Wx_)   上一个时间步的h->U(Wh_)
         self.W_all = nn.Linear(input_dim, hidden_dim * 3)
         self.U_all = nn.Linear(hidden_dim, hidden_dim * 3)
         self.W_t1 = nn.Linear(1, hidden_dim)
+        self.W_x1 = nn.Linear(input_dim, hidden_dim)
         self.W_t2 = nn.Linear(1, hidden_dim)
-        self.W_to = nn.Linear(hidden_dim, hidden_dim)
+        self.W_x2 = nn.Linear(input_dim, hidden_dim)
+        self.W_to = nn.Linear(1, hidden_dim)
 
-        self.b_t1 = nn.Parameter(torch.zeros(hidden_dim))
-        self.b_t2 = nn.Parameter(torch.zeros(hidden_dim))
-        self.b_i = nn.Parameter(torch.zeros(hidden_dim))
-        self.b_o = nn.Parameter(torch.zeros(hidden_dim))
-        self.b_c = nn.Parameter(torch.zeros(hidden_dim))
+        # (窥视孔链接)Initialize peephole connections if enabled
+        if self.peepholes:
+            self.W_ci = nn.Parameter(torch.zeros(hidden_dim))
+            self.W_co = nn.Parameter(torch.zeros(hidden_dim))
 
         # 确保 W_t1 <= 0 by initializing it as 负值
-        self.W_t1.weight.data.uniform_(-1, 0)
+        self.W_t1.weight.data = torch.clamp(self.W_t1.weight.data, max=0.0)
 
     # h ：上一个时间步的隐藏状态
     # c ：上一个时间步的细胞状态
     # x ：当前时间步的输入特征向量
     # t ：当前时间步与上一个时间步之间的时间间隔
     def forward(self, h, c, x, t):
-        # t = t.view(-1, 1)  # 将 t 视图为形状为 [32, 1]
-        # print("Shapes before T1 calculation:")
-        # print("t shape:", t.shape)
-        # print("self.W_t1(t) shape:", self.W_t1(t).shape)
-        # print("self.W_t1.weight.data * t shape:", (self.W_t1.weight.data * t).shape)
-        # print("self.b_t1 shape:", self.b_t1.shape)
         # Calculate time gates
-        T1 = torch.sigmoid(self.W_t1(t) + self.W_t1.weight.data * t + self.b_t1)
-        T2 = torch.sigmoid(self.W_t2(t) + self.W_t2.weight.data * t + self.b_t2)
-
-
+        T1 = torch.sigmoid(torch.tanh(self.W_t1(t)) + self.W_x1(x))
+        T2 = torch.sigmoid(torch.tanh(self.W_t2(t)) + self.W_x2(x))
         # Calculate gates
-        # Wx + Uh
+        # xW_x + hW_h
         outs = self.W_all(x) + self.U_all(h)
         i, o, c_tmp = torch.chunk(outs, 3, 1)
-        i, o, c_tmp = (
-            torch.sigmoid(i + self.b_i),
-            torch.sigmoid(o + t * self.W_to.weight.data + self.b_o),
-            torch.tanh(c_tmp + self.b_c),
-        )
+
+        if self.peepholes:
+            i = i + c * self.W_ci
+        i = torch.sigmoid(i)
+        c_tmp = torch.tanh(c_tmp)
 
         # Update cell state
-        cell = (1 - i * T1) * c + i * T1 * c_tmp
-        c_tilde = (1 - i) * c + i * T2 * c_tmp
+        cell = (1 - i) * c + i * T2 * c_tmp
+        c_tilde = (1 - i * T1) * c + i * T1 * c_tmp
 
+        if self.peepholes:
+            o = o + c_tilde * self.W_co
+        o = torch.sigmoid(o + self.W_to(t))
         # Calculate new hidden state
-        # o = torch.sigmoid(o + t * self.W_t1.weight.data + h @ self.U_all.weight[:, self.hidden_dim:self.hidden_dim * 2].t())
         new_h = o * torch.tanh(cell)
 
         return new_h, c_tilde
