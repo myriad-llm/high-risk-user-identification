@@ -5,7 +5,7 @@ trainer:
   logger:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
-      project: "tlstm"
+      project: "tlstm_autoencoder"
       save_dir: "./wandb/${trainer.logger.init_args.project}"
       log_model: true
   max_epochs: 1000
@@ -13,35 +13,31 @@ trainer:
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
-        monitor: "valid_BinaryF1Score"
-        mode: "max"
+        monitor: "val_loss"
+        mode: "min"
         save_top_k: 10
-        filename: "{epoch}-{valid_BinaryF1Score:.3f}"
+        filename: "{epoch}-{val_loss:.3f}"
         verbose: false
     - class_path: callbacks.LSTMPredictionWriter
       init_args:
         output_dir: "./predictions/${trainer.logger.init_args.project}"
         write_interval: "epoch"
 model:
-  class_path: models.TimeLSTM
+  class_path: models.TimeLSTMAutoEncoder
   init_args:
-    hidden_size: 32
-    num_classes: 2
-    num_heads: 4
-    dropout_rate: 0.5
-    bidirectional: true
+    input_size: 1868
+    hidden_dim1_e: 512
+    output_dim1_e: ${model.init_args.hidden_dim1_e}
+    encoded_dim: 128
+    output_dim2_e: ${model.init_args.encoded_dim}
+    hidden_dim2_d: ${model.init_args.hidden_dim1_e}
+    output_dim1_d: ${model.init_args.encoded_dim}
+    decoded_dim: ${model.init_args.input_size}
     optimizer:
       class_path: torch.optim.AdamW
       init_args:
-        lr: 1e-4
+        lr: 1e-1
         weight_decay: 0.01
-    # lr_scheduler:
-    #   class_path: torch.optim.lr_scheduler.ReduceLROnPlateau
-    #   init_args:
-    #     mode: ${trainer.callbacks[0].init_args.mode}
-    #     monitor: ${trainer.callbacks[0].init_args.monitor}
-    #     patience: 5
-    #     factor: 0.5
 data:
   class_path: datasets.aug.CallRecordsAugDataModule
   init_args:
@@ -49,8 +45,8 @@ data:
     batch_size: 32
     seed: 12
     non_seq: false
-    num_workers: 2
+    num_workers: 4
     time_div: 360
-    mask_rate: 0.05
-    aug_ratio: 0.1
-    aug_times: 1
+    mask_rate: 0.0
+    aug_ratio: 0.0
+    aug_times: 0

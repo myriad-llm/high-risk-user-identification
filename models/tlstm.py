@@ -41,7 +41,35 @@ class TLSTM_Unit(nn.Module):
         new_h = o * torch.tanh(c_t)
         return new_h, c_t
 
+class TLSTM(nn.Module):
+    def __init__(self, input_dim, hidden_dim, reverse=False):
+        super().__init__()
+        self.reverse = reverse
+        self.tlstm_unit = TLSTM_Unit(input_dim, hidden_dim)
+        self.hidden_dim = hidden_dim
+        self.input_dim = input_dim
+    
+    def forward(self, inputs, time_diffs, seq_lens):
+        if self.reverse:
+            inputs = torch.flip(inputs, [1])
+            time_diffs = torch.flip(time_diffs, [1])
+            # Remove the last 0 of time_diffs and put it in the first position
+            time_diffs = torch.cat([time_diffs[:, -1].unsqueeze(1), time_diffs[:, :-1]], dim=1)
 
+        b, seq, embed = inputs.shape
+        h = torch.zeros(b, self.hidden_dim, requires_grad=False).to(inputs.device)
+        c = torch.zeros(b, self.hidden_dim, requires_grad=False).to(inputs.device)
+        outputs = []
+        for s in range(seq):
+            input = inputs[:, s, :]
+            time_diff = time_diffs[:, s].unsqueeze(1)
+            h, c = self.tlstm_unit(h, c, input, time_diff)
+            outputs.append(h)
+        if self.reverse:
+            outputs.reverse()
+        outputs = torch.stack(outputs, dim=1)
+        return outputs
+    
 class TimeLSTM(L.LightningModule):
     def __init__(
         self,
@@ -53,7 +81,6 @@ class TimeLSTM(L.LightningModule):
         optimizer: OptimizerCallable,
         bidirectional: bool = False,
     ):
-        # assumes that batch_first is always true
         super().__init__()
         self.save_hyperparameters()
         self.optimizer = optimizer
@@ -63,18 +90,19 @@ class TimeLSTM(L.LightningModule):
         self.bidirectional = bidirectional
         self.num_classes = num_classes
         self.num_heads = num_heads
-        self.tlstm_unit = TLSTM_Unit(self.input_size, self.hidden_size)
-        # 全局池化层
-        self.global_pooling = nn.AdaptiveAvgPool1d(1)
-        # 注意力机制
+        self.tlstm = TLSTM(input_size, hidden_size)
+        if self.bidirectional:
+            self.tlstm_reverse = TLSTM(input_size, hidden_size, reverse=True)
+
+        # self.global_pooling = nn.AdaptiveAvgPool1d(1)
         self.multi_head_attention = nn.MultiheadAttention(
-            embed_dim=self.hidden_size,
+            embed_dim=self.hidden_size * 2 if self.bidirectional else self.hidden_size,
             num_heads=num_heads,
             dropout=dropout_rate,
             batch_first=True,
         )
         # self.dropout = nn.Dropout(dropout_rate)
-        self.fc = nn.Linear(hidden_size*2, num_classes)
+        self.fc = nn.Linear(hidden_size * 2 if self.bidirectional else hidden_size, num_classes)
         # self.mlp = nn.Sequential(
         #     nn.Linear(hidden_size * 2, hidden_size),
         #     nn.ReLU(),
@@ -93,35 +121,30 @@ class TimeLSTM(L.LightningModule):
         self.train_metrics = metrics.clone(prefix="train_")
         self.valid_metrics = metrics.clone(prefix="valid_")
 
-    def forward(self, inputs, timestamps, seq_lens, reverse=False):
+    def forward(self, inputs, timestamps, seq_lens):
         # inputs: [b, seq, embed]
         # timestamps: [b, seq]
         # h: [b, hid]
         # c: [b, hid]
         b, seq, embed = inputs.shape
-        h = torch.zeros(b, self.hidden_size, requires_grad=False).to(inputs.device)
-        c = torch.zeros(b, self.hidden_size, requires_grad=False).to(inputs.device)
-        outputs = []
-        for s in range(seq):
-            input = inputs[:, s, :]
-            time = timestamps[:, s].unsqueeze(1)
-            h, c = self.tlstm_unit(h, c, input, time)
-            outputs.append(h)
-        if reverse:
-            outputs.reverse()
-        outputs = torch.stack(outputs, dim=1)
+
+        outputs = self.tlstm(inputs, timestamps, seq_lens)
+        if self.bidirectional:
+            outputs_reverse = self.tlstm_reverse(inputs, timestamps, seq_lens)
+            outputs = torch.cat([outputs, outputs_reverse], dim=-1)
+
         # gen padding_mask
         padding_mask = self.gen_padding_mask(seq, seq_lens)
 
-        global_features = self.global_pooling(outputs.permute(0, 2, 1)).squeeze(-1)
+        # global_features = self.global_pooling(outputs.permute(0, 2, 1)).squeeze(-1)
 
         attention_output, _ = self.multi_head_attention(
             query=outputs, key=outputs, value=outputs, key_padding_mask=padding_mask
         )
         batch_indices = torch.arange(b).to(outputs.device)
         last_output = attention_output[batch_indices, seq_lens - 1, :]
-        # 融合全局特征
-        last_output = torch.cat([last_output, global_features], dim=1)
+        # combine global features
+        # last_output = torch.cat([last_output, global_features], dim=1)
         # last_output = torch.stack([outputs[i, seq_lens[i] - 1, :] for i in range(b)])
         # last_output = self.dropout(outputs[-1])
         output = self.fc(last_output)

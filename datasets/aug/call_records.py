@@ -12,7 +12,7 @@ from utils.augmentation import Augmentation
 from tqdm import tqdm
 
 
-class CallRecords(Dataset):
+class CallRecordsAug(Dataset):
     resources = [
         ("trainSet_res_with_distances.csv", "trainSet_ans.csv"),
         ("validationSet_res_with_distances.csv", None),
@@ -274,8 +274,8 @@ class CallRecords(Dataset):
             for col in columns
         }
         print(apply_cols)
-        train_records_df = apply_onehot(train_records_df, apply_cols)
-        val_records_df = apply_onehot(val_records_df, apply_cols)
+        # train_records_df = apply_onehot(train_records_df, apply_cols)
+        # val_records_df = apply_onehot(val_records_df, apply_cols)
 
         train_records_df = add_open_count(train_records_df)
         val_records_df = add_open_count(val_records_df)
@@ -326,23 +326,23 @@ class CallRecords(Dataset):
     def load_records(path: str) -> pd.DataFrame:
         dtypes = {
             "msisdn": "str",
-            **CallRecords.datetime_columns_type,
-            **CallRecords.numeric_columns_type,
-            **CallRecords.area_code_columns_type,
-            **CallRecords.city_columns_type,
-            **CallRecords.province_columns_type,
-            **CallRecords.a_product_id_columns_type,
-            **CallRecords.categorical_columns_type,
+            **CallRecordsAug.datetime_columns_type,
+            **CallRecordsAug.numeric_columns_type,
+            **CallRecordsAug.area_code_columns_type,
+            **CallRecordsAug.city_columns_type,
+            **CallRecordsAug.province_columns_type,
+            **CallRecordsAug.a_product_id_columns_type,
+            **CallRecordsAug.categorical_columns_type,
         }
         usecols = (
             ["msisdn"]
-            + CallRecords.datetime_columns
-            + CallRecords.numeric_columns
-            + CallRecords.area_code_columns
-            + CallRecords.city_columns
-            + CallRecords.province_columns
-            + CallRecords.a_product_id_columns
-            + CallRecords.categorical_columns
+            + CallRecordsAug.datetime_columns
+            + CallRecordsAug.numeric_columns
+            + CallRecordsAug.area_code_columns
+            + CallRecordsAug.city_columns
+            + CallRecordsAug.province_columns
+            + CallRecordsAug.a_product_id_columns
+            + CallRecordsAug.categorical_columns
         )
 
         df = pd.read_csv(
@@ -352,9 +352,9 @@ class CallRecords(Dataset):
             dtype=dtypes,
         )
 
-        for col in CallRecords.datetime_columns:
+        for col in CallRecordsAug.datetime_columns:
             df[col] = pd.to_datetime(
-                df[col], format=CallRecords.time_format[col], errors="coerce"
+                df[col], format=CallRecordsAug.time_format[col], errors="coerce"
             )
 
         df["start_time"] = df["start_time"].apply(lambda x: x.timestamp()).astype("int")
