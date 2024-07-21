@@ -1,5 +1,6 @@
 from collections import defaultdict
 from typing import Dict, List, Tuple
+from dataclasses import is_dataclass
 
 import numpy as np
 import pandas as pd
@@ -33,7 +34,17 @@ def remap_data(
 
 
 def pad_collate(batch):
-    seqs, time_diffs, labels, msisdns, seq_lens = zip(*batch)
+    # HACK: all dataset getitem should return dataclass. temp type check for compatibility.
+    if isinstance(batch[0], tuple):
+        seqs, time_diffs, labels, msisdns, seq_lens = zip(*batch)
+    elif is_dataclass(batch[0]):
+        seqs, time_diffs, labels, msisdns, seq_lens = zip(
+            *[
+                (item.records, item.time_diff, item.labels, item.msisdn, item.records_len)
+                for item in batch
+            ]
+        )
+
 
     seq_padded = pad_sequence(seqs, batch_first=True)
     time_diff_padded = pad_sequence(time_diffs, batch_first=True)
