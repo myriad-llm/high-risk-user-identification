@@ -1,15 +1,25 @@
 import os
 import pickle as pkl
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 from utils import *
 from utils.augmentation import Augmentation
-from tqdm import tqdm
+
+
+@dataclass
+class Item:
+    msisdn: str
+    records: torch.Tensor
+    records_len: int
+    time_diff: Optional[torch.Tensor]
+    labels: Optional[torch.Tensor]
 
 
 class CallRecordsAug(Dataset):
@@ -125,7 +135,7 @@ class CallRecordsAug(Dataset):
     def __getitem__(
         self,
         index: int,
-    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]] | torch.Tensor:
+    ) -> Tuple[Item, torch.Tensor]:
         if self.non_seq:
             return self.records[index]
 
@@ -140,7 +150,7 @@ class CallRecordsAug(Dataset):
             mask_idx = torch.randperm(seq_len)[:mask_num]
             seq[mask_idx] = 0  # Assuming the goal is to mask with zeros
 
-        return seq, time_diff, label, msisdn, seq_len
+        return Item(msisdn, seq, seq_len, time_diff, label)
 
     def __len__(self) -> int:
         if self.non_seq:
@@ -240,7 +250,9 @@ class CallRecordsAug(Dataset):
             self._load_dataframes()
         )
 
-        train_records_df, train_labels_df = self.augment(train_records_df, train_labels_df, self.aug_ratio, self.aug_times)
+        train_records_df, train_labels_df = self.augment(
+            train_records_df, train_labels_df, self.aug_ratio, self.aug_times
+        )
 
         remap_column_group = {
             "area_code": self.area_code_columns,
@@ -304,19 +316,15 @@ class CallRecordsAug(Dataset):
         train_labels_df = pd.get_dummies(
             train_labels_df["is_sa"], columns=["is_sa"], dtype="int8"
         )
-        
 
         return (
             (
                 torch.tensor(train_records_df.values, dtype=torch.float32),
-                # torch.sparse_coo_tensor(train_records_df.sparse.to_coo(), dtype=torch.float32),
                 torch.tensor(train_labels_df.values, dtype=torch.float32),
-                # torch.sparse_coo_tensor(train_labels_df.sparse.to_coo(), dtype=torch.float32),
                 train_seq_index_with_time_diff,
             ),
             (
                 torch.tensor(val_records_df.values, dtype=torch.float32),
-                # torch.sparse_coo_tensor(val_records_df.sparse.to_coo(), dtype=torch.float32),
                 None,
                 val_seq_index_with_time_diff,
             ),
@@ -401,7 +409,7 @@ class CallRecordsAug(Dataset):
                 None,
             ),
         )
-    
+
     def augment(self, train_data, train_labels, ratio_range, times):
         # 3 + 4 * times 因为正负样本比例为 1:4 可以均衡至 1:1
         if times == 0:
@@ -431,11 +439,14 @@ class CallRecordsAug(Dataset):
         addition_train_data = pd.concat(addition_train_data)
         addition_train_labels = pd.concat(addition_train_labels)
         addition_train_data.shape
-        train_data = pd.concat([train_data, addition_train_data], ignore_index=True).reset_index(drop=True)
-        train_labels = pd.concat([train_labels, addition_train_labels], ignore_index=True).reset_index(drop=True)
+        train_data = pd.concat(
+            [train_data, addition_train_data], ignore_index=True
+        ).reset_index(drop=True)
+        train_labels = pd.concat(
+            [train_labels, addition_train_labels], ignore_index=True
+        ).reset_index(drop=True)
         # 按照 msisdn, start_time 排序
         train_data.sort_values(by=["msisdn", "start_time"]).reset_index(drop=True)
         train_labels.sort_values(by=["msisdn"]).reset_index(drop=True)
 
         return train_data, train_labels
-    
