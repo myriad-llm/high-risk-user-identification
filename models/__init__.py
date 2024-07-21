@@ -7,5 +7,4 @@ from .tlstm import TimeLSTM
 from .vae import VAE
 from .xlstm import xLSTM
 from .tlstm3 import TimeLSTM3
-from .tlstm2 import TimeLSTM2
 from. tlstm_ae import TimeLSTMAutoEncoder
