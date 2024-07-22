@@ -7,6 +7,7 @@ class CallRecordsEmbeddings(nn.Module):
     def __init__(
         self,
         embedding_items_path,
+        input_size: int,
         padding_idx: int = 0,
     ):
 
@@ -31,6 +32,8 @@ class CallRecordsEmbeddings(nn.Module):
                 for embedding_item in embedding_items
             }
         )
+        self.layer_norm = nn.LayerNorm(input_size)
+        
 
     def forward(self, x):
         b, seq, f_dim = x.shape
@@ -41,16 +44,14 @@ class CallRecordsEmbeddings(nn.Module):
             embedding = embedding.reshape(b, seq, -1) # b * seq_len * (len(embedding_item.x_col_index) * embedding_dim)
             embedding_list.append(embedding)
         embeddings = torch.cat(embedding_list, dim=-1)
+        # embeddings = embeddings / torch.norm(embeddings, dim=-1, keepdim=True)
 
         del_idx = [embedding_item.x_col_index for embedding_item in self.embedding_items]
         del_idx = torch.cat(del_idx, dim=-1)
         mask = torch.ones(f_dim, dtype=torch.bool)
         mask[del_idx] = False
         embedding_x = torch.cat([x[:, :, mask], embeddings], dim=-1)
-        if embedding_x.max() > 1 or embedding_x.min() < -1:
-            print(embedding_x.max(), embedding_x.min())
-        # 对 embedding 结果进行进一步处理
-        
-        
+
+        embedding_x = self.layer_norm(embedding_x)
 
         return embedding_x
