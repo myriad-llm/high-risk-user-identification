@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 from utils import *
 from utils.augmentation import Augmentation
+from utils.dataclass import EmbeddingItem
 
 
 @dataclass
@@ -34,6 +35,7 @@ class CallRecordsAug(Dataset):
         "data_seq_index_with_time_diff.pkl",
         "predict_records.pt",
         "predict_seq_index_with_time_diff.pkl",
+        "embedding_items.pkl",
     ]
 
     time_format: Dict[str, str] = {
@@ -75,12 +77,18 @@ class CallRecordsAug(Dataset):
         "long_type1",
         "roam_type",
         "dayofweek",
-        "phone1_type",
-        "phone2_type",
     ]
     categorical_columns_type: Dict[str, str] = {
         key: "category" for key in categorical_columns
     }
+
+    phone_type_columns: List[str] = ["phone1_type", "phone2_type"]
+    phone_type_columns_type: Dict[str, str] = {
+        key: "category" for key in phone_type_columns
+    }
+
+    distance_columns: List[str] = ["distance"]
+    distance_columns_type: Dict[str, str] = {key: "float32" for key in distance_columns}
 
     def __init__(
         self,
@@ -107,7 +115,7 @@ class CallRecordsAug(Dataset):
             return 1 / torch.log(x_div + torch.e)
 
         if self._check_legacy_exists():
-            self.records, self.labels, self.seq_index_with_time_diff = (
+            self.records, self.labels, self.seq_index_with_time_diff, self.embedding_items = (
                 self._load_legacy_data()
             )
 
@@ -120,9 +128,9 @@ class CallRecordsAug(Dataset):
         if not self._check_exists():
             raise RuntimeError("Dataset not found.")
 
-        data, pred = self._load_data()
+        data, pred, embedding_items = self._load_data()
 
-        self._save_legacy_data(data, pred)
+        self._save_legacy_data(data, pred, embedding_items)
 
         self.records, self.labels, self.seq_index_with_time_diff = (
             pred if self.predict else data
@@ -131,6 +139,7 @@ class CallRecordsAug(Dataset):
             (seq, msisdn, time_map(time_diff))
             for seq, msisdn, time_diff in self.seq_index_with_time_diff
         ]
+        self.embedding_items = embedding_items
 
     def __getitem__(
         self,
@@ -159,8 +168,23 @@ class CallRecordsAug(Dataset):
         return len(self.seq_index_with_time_diff)
 
     @property
+    def embedding_items_path(self) -> str:
+        for item in self.embedding_items:
+            print(item)
+        embedding_items_path = os.path.join(
+            self.processed_folder, "embedding_items.pkl"
+        )
+        assert os.path.exists(embedding_items_path), "embedding_items.pkl not found"
+        return embedding_items_path
+
+    @property
     def features_num(self) -> int:
-        return self.records.shape[1]
+        # HACK: According to embedding_items to calculate feature_num
+        feature_num = self.records.shape[1]
+        for item in self.embedding_items:
+            feature_num -= len(item.x_col_index)
+            feature_num += item.embedding_dim * len(item.x_col_index)
+        return feature_num
 
     @property
     def raw_folder(self) -> str:
@@ -182,7 +206,10 @@ class CallRecordsAug(Dataset):
     def _load_legacy_data(
         self,
     ) -> Tuple[
-        torch.Tensor, Optional[torch.Tensor], List[Tuple[List[int], torch.Tensor]]
+        torch.Tensor,
+        Optional[torch.Tensor],
+        List[Tuple[List[int], torch.Tensor]],
+        List[EmbeddingItem],
     ]:
         records_file = "predict_records.pt" if self.predict else "data_records.pt"
         labels_file = None if self.predict else "data_labels.pt"
@@ -191,6 +218,7 @@ class CallRecordsAug(Dataset):
             if self.predict
             else "data_seq_index_with_time_diff.pkl"
         )
+        embedding_items_file = "embedding_items.pkl"
 
         records = torch.load(os.path.join(self.processed_folder, records_file))
 
@@ -201,16 +229,21 @@ class CallRecordsAug(Dataset):
         with open(os.path.join(self.processed_folder, seq_file), "rb") as f:
             seq_index_with_time_diff = pkl.load(f)
 
+        with open(os.path.join(self.processed_folder, embedding_items_file), "rb") as f:
+            embedding_items = pkl.load(f)
+
         return (
             records.to_dense(),
             labels.to_dense() if labels is not None else None,
             seq_index_with_time_diff,
+            embedding_items,
         )
 
     def _save_legacy_data(
         self,
         data: Tuple[torch.Tensor, torch.Tensor, List[Tuple[List[int], torch.Tensor]]],
         pred: Tuple[torch.Tensor, None, List[Tuple[List[int], torch.Tensor]]],
+        embedding_items: List[EmbeddingItem],
     ) -> None:
         if not os.path.exists(self.processed_folder):
             os.makedirs(self.processed_folder)
@@ -233,6 +266,7 @@ class CallRecordsAug(Dataset):
         save_pickle(
             pred_seq_index_with_time_diff, "predict_seq_index_with_time_diff.pkl"
         )
+        save_pickle(embedding_items, "embedding_items.pkl")
 
     def _check_exists(self) -> bool:
         return all(
@@ -245,6 +279,7 @@ class CallRecordsAug(Dataset):
     def _load_data(self) -> Tuple[
         Tuple[torch.Tensor, torch.Tensor, List[Tuple[List[int], torch.Tensor]]],
         Tuple[torch.Tensor, None, List[Tuple[List[int], torch.Tensor]]],
+        List[EmbeddingItem],
     ]:
         (train_records_df, train_labels_df), (val_records_df, _) = (
             self._load_dataframes()
@@ -259,6 +294,7 @@ class CallRecordsAug(Dataset):
             # 'city': self.city_columns,
             "province": self.province_columns,
             "a_product_id": self.a_product_id_columns,
+            "phone_type": self.phone_type_columns,
         }
         remap_column_group.update({col: [col] for col in self.categorical_columns})
 
@@ -305,9 +341,67 @@ class CallRecordsAug(Dataset):
         train_records_df.drop(columns=["msisdn", "start_time"], axis=1, inplace=True)
         val_records_df.drop(columns=["msisdn", "start_time"], axis=1, inplace=True)
 
+        # HACK: Make sure numeric columns are in the front, it's not necessary to sort the columns, but it's easier to debug.
+        numeric_columns = [
+            "call_duration",
+            "cfee",
+            "lfee",
+            "hour",
+            "open_count",
+            "distance",
+        ]
+        embedding_columns = list(train_records_df.columns.difference(numeric_columns))
+
+        train_records_df = train_records_df[numeric_columns + embedding_columns]
+        val_records_df = val_records_df[numeric_columns + embedding_columns]
+
+        # categorical values embedding
+        # if sqrt(vocab_size) < 3, embedding_dim = 3
+        min_embedding_dim = 3
+        embedding_names = [
+            "area_code",
+            "province",
+            "phone_type",
+            "a_product_id",
+            "a_serv_type",
+            "dayofweek",
+            "long_type1",
+            "roam_type",
+        ]
+        embedding_items = []
+        for embedding_name in embedding_names:
+            if embedding_name == "area_code":
+                vocab_size = len(value_dicts["area_code"])
+                col_idx = [
+                    train_records_df.columns.get_loc(col)
+                    for col in self.area_code_columns
+                ]
+            elif embedding_name == "province":
+                vocab_size = len(value_dicts["province"])
+                col_idx = [
+                    train_records_df.columns.get_loc(col)
+                    for col in self.province_columns
+                ]
+            elif embedding_name == "phone_type":
+                vocab_size = len(value_dicts["phone_type"])
+                col_idx = [
+                    train_records_df.columns.get_loc(col)
+                    for col in self.phone_type_columns
+                ]
+            else:
+                vocab_size = len(value_dicts[embedding_name])
+                col_idx = [train_records_df.columns.get_loc(embedding_name)]
+            vocab_size += 1  # for padding
+            col_idx_tensor = torch.tensor(col_idx, dtype=torch.int32)
+            embedding_dim = max(min_embedding_dim, int(vocab_size**0.5))
+            embedding_items.append(
+                EmbeddingItem(embedding_name, vocab_size, embedding_dim, col_idx_tensor)
+            )
+
+        # numeric values scaling
         train_records_df, val_records_df = apply_scaler(
             [train_records_df, val_records_df],
-            ["call_duration", "cfee", "lfee", "hour", "open_count"],
+            numeric_columns,
         )
 
         train_labels_df = (
@@ -328,6 +422,7 @@ class CallRecordsAug(Dataset):
                 None,
                 val_seq_index_with_time_diff,
             ),
+            embedding_items,
         )
 
     @staticmethod
@@ -341,6 +436,8 @@ class CallRecordsAug(Dataset):
             **CallRecordsAug.province_columns_type,
             **CallRecordsAug.a_product_id_columns_type,
             **CallRecordsAug.categorical_columns_type,
+            **CallRecordsAug.phone_type_columns_type,
+            **CallRecordsAug.distance_columns_type,
         }
         usecols = (
             ["msisdn"]
@@ -351,6 +448,8 @@ class CallRecordsAug(Dataset):
             + CallRecordsAug.province_columns
             + CallRecordsAug.a_product_id_columns
             + CallRecordsAug.categorical_columns
+            + CallRecordsAug.phone_type_columns
+            + CallRecordsAug.distance_columns
         )
 
         df = pd.read_csv(

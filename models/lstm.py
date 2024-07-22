@@ -3,18 +3,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from lightning.pytorch.utilities.types import STEP_OUTPUT
-import torchmetrics
 from torchmetrics.classification import BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score
 from torchmetrics.collections import MetricCollection
+from models.common import CallRecordsEmbeddings
 
 
 class LSTM(L.LightningModule):
-    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+    def __init__(self, input_size, hidden_size, num_layers, num_classes, embedding_items_path):
         super().__init__()
         self.save_hyperparameters()
 
         self.hidden_size = hidden_size
         self.num_layers = num_layers
+        self.embedding = CallRecordsEmbeddings(embedding_items_path)
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_size, num_classes)
         metrics = MetricCollection(
@@ -28,18 +29,31 @@ class LSTM(L.LightningModule):
         self.train_metrics = metrics.clone(prefix="train_")
         self.valid_metrics = metrics.clone(prefix="valid_")
 
-    def forward(self, x):
+    def forward(self, x, seq_lens):
+        # inputs: [b, seq, embed]
+        # timestamps: [b, seq]
+        # h: [b, hid]
+        # c: [b, hid]
+        b, seq, embed = x.shape
+        
+       
+        x = self.embedding(x) 
+
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
         out, _ = self.lstm(x, (h0, c0))
+
+        # batch_indices = torch.arange(b).to(out.device)
+        # last_output = out[batch_indices, seq_lens - 1, :]
+
         out = self.fc(out[:, -1, :])
         return out
 
     def training_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        seqs, _, labels, _ = batch
+        seqs, _, labels, _, seq_lens = batch
         labels = torch.argmax(labels, dim=1)
 
-        outputs = self(seqs)
+        outputs = self(seqs, seq_lens)
         loss = F.cross_entropy(outputs, labels)
 
         self.log("train_loss", loss.item(), sync_dist=True)
@@ -51,10 +65,10 @@ class LSTM(L.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx) -> STEP_OUTPUT:
-        seqs, _, labels, _ = batch
+        seqs, _, labels, _, seq_lens = batch
         labels = torch.argmax(labels, dim=1)
 
-        outputs = self(seqs)
+        outputs = self(seqs, seq_lens)
         loss = F.cross_entropy(outputs, labels)
 
         self.log("val_loss", loss.item(), sync_dist=True)
@@ -75,9 +89,9 @@ class LSTM(L.LightningModule):
         return optimizer
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        seqs, _, _, msisdns = batch
+        seqs, _, _, msisdns, seq_lens = batch
         outputs = torch.argmax(
-            torch.softmax(self(seqs), dim=1),
+            torch.softmax(self(seqs, seq_lens), dim=1),
             dim=1,
         )
         return outputs, msisdns

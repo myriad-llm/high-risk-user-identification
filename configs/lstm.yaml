@@ -8,7 +8,7 @@ trainer:
       project: "lstm"
       save_dir: "./wandb/${trainer.logger.init_args.project}"
       log_model: true
-  max_epochs: 100
+  max_epochs: 1000
   default_root_dir: "./lightning_logs/${trainer.logger.init_args.project}"
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
@@ -22,17 +22,20 @@ trainer:
       init_args:
         output_dir: "./predictions/${trainer.logger.init_args.project}"
         write_interval: "epoch"
+data:
+  class_path: datasets.aug.CallRecordsAugDataModule
+  init_args:
+    data_dir: "./data"
+    batch_size: 64
+    seed: 12
+    non_seq: false
+    num_workers: 4
+    mask_rate: 0.0
+    aug_ratio: 0.0
+    aug_times: 0
 model:
   class_path: models.LSTM
   init_args:
-    hidden_size: 128
+    hidden_size: 32
     num_layers: 2
     num_classes: 2
-data:
-  class_path: datasets.CallRecordsDataModule
-  init_args:
-    data_dir: "./data"
-    batch_size: 32
-    seed: 12
-    non_seq: false
-    num_workers: 1

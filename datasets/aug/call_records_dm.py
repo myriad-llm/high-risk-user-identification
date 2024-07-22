@@ -35,6 +35,10 @@ class CallRecordsDataModuleBase(L.LightningDataModule):
     @property
     def feature_dim(self):
         return self.full.features_num
+    
+    @property
+    def embedding_items_path(self):
+        return self.full.embedding_items_path
 
     def dataloader(self, dataset: Dataset, shuffle: bool = False):
         return DataLoader(
