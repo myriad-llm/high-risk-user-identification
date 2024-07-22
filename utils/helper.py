@@ -14,7 +14,8 @@ def generate_value_dict(
     columns: list[str], data: pd.DataFrame, valid: pd.DataFrame
 ) -> Dict[str, int]:
     return {
-        v: k
+        # for embedding, 0 is reserved for padding(padding_idx=0)
+        v: k+1
         for k, v in enumerate(
             pd.unique(pd.concat([data[columns], valid[columns]]).values.ravel())
         )
