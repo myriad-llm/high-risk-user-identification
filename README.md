@@ -34,6 +34,25 @@ mkdir -p data/CallRecordsV2/raw
 Put `trainSet_ans.csv`, `testSet_res.csv` and `validationSet_res.csv` files
 at `data/CallRecordsV2/raw/` directory.
 
+#### CallRecordsAug
+
+functions:
+
+1. data augmentation
+2. entity embedding
+
+```shell
+mkdir -p data/CallRecordsAug/raw
+```
+
+This is for the models that use `models/common/embedding.py`, which can perform Entity Embedding on the categorical variables in the raw data.
+
+Will additionally generate a `embeddingItems.pkl` file in the `data/CallRecordsAug/preprocessed/` directory.
+
+Because of changing onehot to more dense embedding representation, it has faster training speed, smaller memory requirement and supports higher data augmentation times.
+
+This datamodule should be used with the script `main_embedding.py` which has a feature that can add the `embeddingItems.pkl` file to the config file automatically.
+
 ### Use
 
 Train:
