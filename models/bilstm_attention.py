@@ -12,6 +12,7 @@ from torchmetrics.classification import (
 )
 from torchmetrics.collections import MetricCollection
 from torch.optim import Optimizer
+from .common.embedding import CallRecordsEmbeddings
 
 
 OptimizerCallable = Callable[[Iterable], Optimizer]
@@ -26,11 +27,17 @@ class BiLSTMWithImprovedAttention(L.LightningModule):
         num_layers,
         dropout_rate,
         num_heads,
+        embedding_items_path,
         optimizer: OptimizerCallable = torch.optim.AdamW,
     ):
         super(BiLSTMWithImprovedAttention, self).__init__()
         self.save_hyperparameters()
         self.optimizer = optimizer
+
+        self.embeddings = CallRecordsEmbeddings(
+            input_size=input_size,
+            embedding_items_path=embedding_items_path,
+        )
 
 
         # 双向LSTM层
@@ -67,6 +74,9 @@ class BiLSTMWithImprovedAttention(L.LightningModule):
 
     def forward(self, x, seq_lens):
         b, max_seq_len, dim = x.size()
+
+        x = self.embeddings(x)
+
         # LSTM层
         lstm_out, _ = self.lstm(x) # (batch_size, seq_len, hidden_size * 2)
 

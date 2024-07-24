@@ -12,6 +12,7 @@ from torchmetrics.classification import (
 from torchmetrics.collections import MetricCollection
 from torch.optim import Optimizer
 from typing import Callable, Iterable
+from models.common.embedding import CallRecordsEmbeddings
 
 OptimizerCallable = Callable[[Iterable], Optimizer]
 
@@ -79,6 +80,7 @@ class TimeLSTM(L.LightningModule):
         dropout_rate: float,
         num_heads: int,
         optimizer: OptimizerCallable,
+        embedding_items_path,
         bidirectional: bool = False,
     ):
         super().__init__()
@@ -94,15 +96,20 @@ class TimeLSTM(L.LightningModule):
         if self.bidirectional:
             self.tlstm_reverse = TLSTM(input_size, hidden_size, reverse=True)
 
-        # self.global_pooling = nn.AdaptiveAvgPool1d(1)
+        self.global_pooling = nn.AdaptiveAvgPool1d(1)
         self.multi_head_attention = nn.MultiheadAttention(
             embed_dim=self.hidden_size * 2 if self.bidirectional else self.hidden_size,
             num_heads=num_heads,
             dropout=dropout_rate,
             batch_first=True,
         )
-        # self.dropout = nn.Dropout(dropout_rate)
-        self.fc = nn.Linear(hidden_size * 2 if self.bidirectional else hidden_size, num_classes)
+        self.embeddings = CallRecordsEmbeddings(
+            embedding_items_path,
+            input_size
+        )
+        self.dropout = nn.Dropout(dropout_rate)
+        # self.fc = nn.Linear(hidden_size * 2 if self.bidirectional else hidden_size, num_classes)
+        self.fc = nn.Linear(hidden_size * 2, num_classes)
         # self.mlp = nn.Sequential(
         #     nn.Linear(hidden_size * 2, hidden_size),
         #     nn.ReLU(),
@@ -128,6 +135,7 @@ class TimeLSTM(L.LightningModule):
         # c: [b, hid]
         b, seq, embed = inputs.shape
 
+        inputs = self.embeddings(inputs)
         outputs = self.tlstm(inputs, timestamps, seq_lens)
         if self.bidirectional:
             outputs_reverse = self.tlstm_reverse(inputs, timestamps, seq_lens)
@@ -136,7 +144,7 @@ class TimeLSTM(L.LightningModule):
         # gen padding_mask
         padding_mask = self.gen_padding_mask(seq, seq_lens)
 
-        # global_features = self.global_pooling(outputs.permute(0, 2, 1)).squeeze(-1)
+        global_features = self.global_pooling(outputs.permute(0, 2, 1)).squeeze(-1)
 
         attention_output, _ = self.multi_head_attention(
             query=outputs, key=outputs, value=outputs, key_padding_mask=padding_mask
@@ -144,9 +152,9 @@ class TimeLSTM(L.LightningModule):
         batch_indices = torch.arange(b).to(outputs.device)
         last_output = attention_output[batch_indices, seq_lens - 1, :]
         # combine global features
-        # last_output = torch.cat([last_output, global_features], dim=1)
+        last_output = torch.cat([last_output, global_features], dim=1)
         # last_output = torch.stack([outputs[i, seq_lens[i] - 1, :] for i in range(b)])
-        # last_output = self.dropout(outputs[-1])
+        last_output = self.dropout(last_output)
         output = self.fc(last_output)
         # output = self.mlp(last_output)
         return output

@@ -26,10 +26,10 @@ data:
   class_path: datasets.aug.CallRecordsAugDataModule
   init_args:
     data_dir: "./data"
-    batch_size: 64
+    batch_size: 128
     seed: 12
     non_seq: false
-    num_workers: 4
+    num_workers: 6
     mask_rate: 0.0
     aug_ratio: 0.0
     aug_times: 0
