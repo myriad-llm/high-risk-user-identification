@@ -183,7 +183,7 @@ class TimeLSTMAutoEncoder_MMD(L.LightningModule):
         decoded_dim: int,
         mask_rate: float = 0.1,
         optimizer: OptimizerCallable = torch.optim.Adam,
-        mmd_weight: float = 0.1  # Weight for the MMD loss
+        mmd_weight: float = 0.05  # Weight for the MMD loss
     ):
         super().__init__()
         self.save_hyperparameters()

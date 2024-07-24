@@ -1,6 +1,6 @@
 # lightning.pytorch==2.3.1
 seed_everything: 123
-ckpt_path: "wandb/tlstm_autoencoder_mmd/tlstm_autoencoder_mmd/s5qlipbm/checkpoints/epoch=41-val_loss=0.228.ckpt"
+ckpt_path: null
 trainer:
   logger:
     class_path: lightning.pytorch.loggers.WandbLogger
