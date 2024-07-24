@@ -25,10 +25,10 @@ trainer:
 model:
   class_path: models.TimeLSTMAutoEncoder
   init_args:
-    input_size: 1868
-    hidden_dim1_e: 512
+    input_size: 128
+    hidden_dim1_e: 32
     output_dim1_e: ${model.init_args.hidden_dim1_e}
-    encoded_dim: 128
+    encoded_dim: 16
     output_dim2_e: ${model.init_args.encoded_dim}
     hidden_dim2_d: ${model.init_args.hidden_dim1_e}
     output_dim1_d: ${model.init_args.encoded_dim}
@@ -42,7 +42,7 @@ data:
   class_path: datasets.aug.CallRecordsAugDataModule
   init_args:
     data_dir: "./data"
-    batch_size: 32
+    batch_size: 192
     seed: 12
     non_seq: false
     num_workers: 4
@@ -50,3 +50,4 @@ data:
     mask_rate: 0.0
     aug_ratio: 0.0
     aug_times: 0
+    for_ae: true

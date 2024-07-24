@@ -12,6 +12,7 @@ from torchmetrics.classification import (
 from torchmetrics.collections import MetricCollection
 from torch.optim import Optimizer
 from typing import Callable, Iterable
+from .common.embedding import CallRecordsEmbeddings
 
 OptimizerCallable = Callable[[Iterable], Optimizer]
 
@@ -145,12 +146,17 @@ class TimeLSTMAutoEncoder(L.LightningModule):
         hidden_dim2_d: int,
         output_dim1_d: int,
         decoded_dim: int,
+        embedding_items_path,
         optimizer: OptimizerCallable = torch.optim.Adam,
     ):
         super().__init__()
         self.save_hyperparameters()
         self.optimizer = optimizer
 
+        self.embeddings = CallRecordsEmbeddings(
+            input_size=input_size,
+            embedding_items_path=embedding_items_path,
+        )
         self.encoder = TLSTM_Encoder(
             in_channels=input_size,
             hidden_dim1=hidden_dim1_e,
@@ -167,23 +173,25 @@ class TimeLSTMAutoEncoder(L.LightningModule):
         )
               
     def forward(self, x, time_diffs, seq_lens):
+        x = self.embeddings(x)
+
         representation, decoder_cs = self.encoder(x, time_diffs, seq_lens) # b * encoded_dim
         outputs = self.decoder(x, time_diffs, seq_lens, representation, decoder_cs) # b * seq * decoded_dim
-        return representation, outputs
+        return representation, outputs, x
     
     def training_step(self, batch, batch_idx):
         x, time_diffs, _,_, seq_lens = batch
-        _, outputs = self(x, time_diffs, seq_lens)
+        _, outputs, x = self(x, time_diffs, seq_lens)
         assert x.shape == outputs.shape
         loss = F.mse_loss(outputs, x)
-        self.log("train_loss", loss, batch_size=x.size(0))
+        self.log("train_loss", loss, on_step=True, on_epoch=True)
         return loss
     
     def validation_step(self, batch, batch_idx):
         x, time_diffs, _,_, seq_lens = batch
-        _, outputs = self(x, time_diffs, seq_lens)
+        _, outputs, x = self(x, time_diffs, seq_lens)
         loss = F.mse_loss(outputs, x)
-        self.log("val_loss", loss, batch_size=x.size(0))
+        self.log("val_loss", loss, on_step=True, on_epoch=True)
         return loss
     
     def configure_optimizers(self):

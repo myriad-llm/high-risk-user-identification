@@ -9,7 +9,7 @@ from .helper import (
     pad_collate,
     examine_data,
     add_static_features,
-    augment
+    augment,
 )
 
 __all__ = [
@@ -23,5 +23,5 @@ __all__ = [
     "pad_collate",
     "examine_data",
     "add_static_features",
-    "augment"
+    "augment",
 ]

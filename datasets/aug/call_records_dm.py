@@ -29,13 +29,27 @@ class CallRecordsDataModuleBase(L.LightningDataModule):
         self.time_div = time_div
         self.mask_rate = mask_rate
 
-        self.full = CallRecordsAug(root=self.data_dir, predict=False, non_seq=non_seq, time_div=time_div, mask_rate=mask_rate, aug_ratio=aug_ratio, aug_times=aug_times)
-        self.pred = CallRecordsAug(root=self.data_dir, predict=True, non_seq=non_seq, time_div=time_div, mask_rate=0.0)
+        self.full = CallRecordsAug(
+            root=self.data_dir,
+            predict=False,
+            non_seq=non_seq,
+            time_div=time_div,
+            mask_rate=mask_rate,
+            aug_ratio=aug_ratio,
+            aug_times=aug_times,
+        )
+        self.pred = CallRecordsAug(
+            root=self.data_dir,
+            predict=True,
+            non_seq=non_seq,
+            time_div=time_div,
+            mask_rate=0.0,
+        )
 
     @property
     def feature_dim(self):
         return self.full.features_num
-    
+
     @property
     def embedding_items_path(self):
         return self.full.embedding_items_path
@@ -65,7 +79,17 @@ class CallRecordsAugDataModule(CallRecordsDataModuleBase):
         aug_times: int = 0,
         for_ae: bool = False,
     ):
-        super().__init__(data_dir, batch_size, seed, non_seq, num_workers, time_div, mask_rate, aug_ratio, aug_times)
+        super().__init__(
+            data_dir,
+            batch_size,
+            seed,
+            non_seq,
+            num_workers,
+            time_div,
+            mask_rate,
+            aug_ratio,
+            aug_times,
+        )
 
         self.for_ae = for_ae
 
@@ -79,20 +103,22 @@ class CallRecordsAugDataModule(CallRecordsDataModuleBase):
         else:
             overflow = end_index - full_length
             indices_val = list(range(start_index, full_length)) + list(range(overflow))
-        
+
         indices_train = [i for i in range(full_length) if i not in indices_val]
         self.train = torch.utils.data.Subset(self.full, indices_train)
         self.val = torch.utils.data.Subset(self.full, indices_val)
 
     def train_dataloader(self):
         if self.for_ae:
-            # 将 train, val 和 pred 合并，用于训练 AE
-            all_dataset = ConcatDataset([self.train, self.val, self.pred])
-            return self.dataloader(all_dataset, shuffle=True)
+            return self.dataloader(self.full, shuffle=True)
         return self.dataloader(self.train, shuffle=True)
 
     def val_dataloader(self):
+        if self.for_ae:
+            return self.dataloader(self.pred)
         return self.dataloader(self.val)
 
     def predict_dataloader(self):
+        if self.for_ae:
+            return [self.dataloader(self.full), self.dataloader(self.pred)]
         return self.dataloader(self.pred)

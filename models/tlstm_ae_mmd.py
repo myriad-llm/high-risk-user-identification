@@ -12,6 +12,7 @@ from torchmetrics.classification import (
 from torchmetrics.collections import MetricCollection
 from torch.optim import Optimizer
 from typing import Callable, Iterable
+from .common import CallRecordsEmbeddings
 
 OptimizerCallable = Callable[[Iterable], Optimizer]
 
@@ -172,6 +173,7 @@ class TimeLSTMAutoEncoder_MMD(L.LightningModule):
     def __init__(
         self,
         input_size,
+        embedding_items_path,
         hidden_dim1_e: int,
         encoded_dim: int,
         output_dim1_e: int,
@@ -179,6 +181,7 @@ class TimeLSTMAutoEncoder_MMD(L.LightningModule):
         hidden_dim2_d: int,
         output_dim1_d: int,
         decoded_dim: int,
+        mask_rate: float = 0.1,
         optimizer: OptimizerCallable = torch.optim.Adam,
         mmd_weight: float = 0.1  # Weight for the MMD loss
     ):
@@ -186,6 +189,8 @@ class TimeLSTMAutoEncoder_MMD(L.LightningModule):
         self.save_hyperparameters()
         self.optimizer = optimizer
 
+        self.mask_rate = mask_rate
+        self.embeddings = CallRecordsEmbeddings(input_size=input_size, embedding_items_path=embedding_items_path)
         self.encoder = TLSTM_Encoder(
             in_channels=input_size,
             hidden_dim1=hidden_dim1_e,
@@ -204,14 +209,19 @@ class TimeLSTMAutoEncoder_MMD(L.LightningModule):
         self.mmd_loss = MMD_loss()
         self.mmd_weight = mmd_weight
 
-    def forward(self, x, time_diffs, seq_lens):
+    def forward(self, x, time_diffs, seq_lens, mask=False):
+        original_x = self.embeddings(x)
+        if mask:
+            x = self.mask_input(original_x, seq_lens, self.mask_rate)
+        else:
+            x = original_x
         representation, decoder_cs = self.encoder(x, time_diffs, seq_lens)
         outputs = self.decoder(x, time_diffs, seq_lens, representation, decoder_cs)
-        return representation, outputs
+        return representation, outputs, original_x
 
     def training_step(self, batch, batch_idx):
         x, time_diffs, labels, _, seq_lens = batch  # 目标标签现在是 `labels`
-        representation, outputs = self(x, time_diffs, seq_lens)
+        representation, outputs, x = self(x, time_diffs, seq_lens, mask=True)
 
         # Generate Gaussian samples for MMD calculation
         true_samples = torch.randn(representation.size()).to(self.device)
@@ -229,8 +239,8 @@ class TimeLSTMAutoEncoder_MMD(L.LightningModule):
         return total_loss
 
     def validation_step(self, batch, batch_idx):
-        x, time_diffs, labels, _, seq_lens = batch  # 目标标签现在是 `labels`
-        representation, outputs = self(x, time_diffs, seq_lens)
+        x, time_diffs, labels, _, seq_lens = batch
+        representation, outputs, x = self(x, time_diffs, seq_lens, mask=False)
 
         # Generate Gaussian samples for MMD calculation
         true_samples = torch.randn(representation.size()).to(self.device)
@@ -246,6 +256,27 @@ class TimeLSTMAutoEncoder_MMD(L.LightningModule):
         self.log("val_mmd_loss", mmd_loss, batch_size=x.size(0))
         
         return total_loss
+    
+    def predict_step(self, batch, batch_idx, dataloader_idx=None):
+        x, time_diffs, _, msisdns, seq_lens = batch
+        representation, outputs, x = self(x, time_diffs, seq_lens, mask=False)
+        return representation, msisdns
 
     def configure_optimizers(self):
         return self.optimizer(self.parameters())
+   
+    def mask_input(self, x, seq_lens, mask_rate):
+        b, seq, f_dim = x.shape
+        mask = torch.zeros(b, seq, dtype=torch.bool).to(x.device)
+       
+        mask_lengths = (seq_lens * mask_rate).long().to(x.device)
+        for i in range(b):
+            mask_len = mask_lengths[i]
+            seq_len = seq_lens[i]
+            if mask_len < 1:
+                continue
+            # mask_rate * seq_len will be masked, and not continuous
+            mask[i, :seq_len] = torch.randperm(seq_len).to(x.device) < mask_len
+        mask = mask.unsqueeze(2).expand(b, seq, f_dim)
+        x = x * ~mask
+        return x

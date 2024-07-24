@@ -8,3 +8,4 @@ from .vae import VAE
 from .xlstm import xLSTM
 from .tlstm3 import TimeLSTM3
 from .tlstm_ae import TimeLSTMAutoEncoder
+from .tlstm_ae_mmd import TimeLSTMAutoEncoder_MMD
