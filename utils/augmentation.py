@@ -120,7 +120,53 @@ class Augmentation:
         """ """
         pass
 
+    @count_calls
+    def sliding_window(self, window_size: int, step_size: int):
+        """
+        Create new samples using a sliding window approach.
 
+        Args:
+            window_size (int): The size of the sliding window.
+            step_size (int): The step size for sliding the window.
+
+        Returns:
+            Tuple[pd.DataFrame, pd.DataFrame]: res_dfs, res_labels. res_dfs is all the new sequences, res_labels is the labels of the new sequences: `res_labels[[id_column, label_name]]`, n * 2
+        """
+        res_dfs = []
+        num_windows = (len(self.df) - window_size) // step_size + 1
+
+        for i in range(num_windows):
+            start_idx = i * step_size
+            end_idx = start_idx + window_size
+            window_df = self.df.iloc[start_idx:end_idx].copy()
+
+            if window_df.empty:
+                continue
+
+            new_id = f"{self.id}_window_{i}"
+            ids = pd.DataFrame([new_id] * window_df.shape[0], columns=[self.id_column_name])
+
+            # Reset index to align data correctly
+            window_df.reset_index(drop=True, inplace=True)
+
+            # Concatenate the id column and the rest of the data
+            window_df = pd.concat([ids, window_df], axis=1)
+
+            # Flatten the DataFrame into a single row
+            row_data = window_df.values.flatten()
+            res_dfs.append(row_data)
+
+        if res_dfs:
+            # Convert the list of rows into a DataFrame
+            res_dfs = pd.DataFrame(res_dfs)
+
+            # Generate labels DataFrame
+            unique_ids = [row[0] for row in res_dfs.values]  # Assuming the id is in the first column
+            res_labels = pd.DataFrame({self.id_column_name: unique_ids, self.label_column_name: self.label})
+
+            return res_dfs, res_labels
+        else:
+            return pd.DataFrame(), pd.DataFrame()
 
 
 if __name__ == "__main__":
@@ -167,6 +213,8 @@ if __name__ == "__main__":
 
     times = 4
     ratio_range = 0.1
+    window_size = 10  # 设置滑动窗口的大小
+    step_size = 5  # 设置滑动窗口的步长
     pbar = tqdm(train_data.groupby("msisdn"))
     for msisdn, group in pbar:
         if msisdn == 0:
@@ -177,14 +225,24 @@ if __name__ == "__main__":
         # 对正负样本进行平衡 样本比 1:4
         if label == 1:
             res_df, res_labels = aug.times(
-                ratio=ratio_range, times=times * 4, method="mask"
+                ratio=ratio_range, times=times * 4,
+                window_size=window_size, step_size=step_size,
+                method="mask"
             )
         else:
             res_df, res_labels = aug.times(
-                ratio=ratio_range, times=times, method="mask"
+                ratio=ratio_range, times=times,
+                window_size=window_size, step_size=step_size,
+                method="mask"
             )
         addition_train_data.append(res_df)
         addition_train_labels.append(res_labels)
+        res_df, res_labels = aug.sliding_window(window_size=window_size, step_size=step_size)
+        if not res_df.empty:
+            addition_train_data.append(res_df)
+            addition_train_labels.append(res_labels)
+            
     addition_train_data = pd.concat(addition_train_data)
     addition_train_labels = pd.concat(addition_train_labels)
-    addition_train_data.shape
+    print("addition_train_data.shape is: ", addition_train_data.shape)
+    addition_train_data.to_csv("addition_train_data.csv", index=False)  
