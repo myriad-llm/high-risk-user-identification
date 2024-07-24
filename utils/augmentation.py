@@ -33,9 +33,9 @@ class Augmentation:
 
     def times(
         self,
-        ratio: Union[float, List[float], Tuple[float, float]],
         times: int,
         method: str,
+        **method_kwargs,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
 
@@ -50,6 +50,30 @@ class Augmentation:
         Returns:
             Tuple[pd.DataFrame, pd.DataFrame]: res_dfs, res_labels. res_dfs is all the new sequences, res_labels is the labels of the new sequences: `res_labels[[id_column, label_name]]`, n * 2
         """
+        
+        res_dfs = []
+        for i in range(times):
+            method_func = getattr(self, method)
+            assert method_func is not None, f"Method {method} not found"
+            res_df, label = method_func(method_kwargs)
+            if res_df is None and label is None:
+                continue
+            else:
+                res_dfs.append(res_df)
+
+        if len(res_dfs) == 0:
+            return None, None
+
+        res_dfs = pd.concat(res_dfs)
+        unique_ids = res_dfs[self.id_column_name].unique()
+        res_labels = pd.DataFrame([self.label] * len(unique_ids), columns=[self.label_column_name])
+        res_labels = pd.concat(
+            [pd.DataFrame(unique_ids, columns=[self.id_column_name]), res_labels], axis=1
+        )
+        return res_dfs, res_labels
+
+    @count_calls
+    def mask(self, ratio):
         if type(ratio) == list:
             ratio = np.random.choice(ratio)
         elif type(ratio) == tuple:
@@ -61,22 +85,7 @@ class Augmentation:
 
         if int(ratio * self.df.shape[0]) < 1:
             return None, None
-        res_dfs = []
-        for i in range(times):
-            method_func = getattr(self, method)
-            assert method_func is not None, f"Method {method} not found"
-            res_df, label = method_func(ratio)
-            res_dfs.append(res_df)
-        res_dfs = pd.concat(res_dfs)
-        unique_ids = res_dfs[self.id_column_name].unique()
-        res_labels = pd.DataFrame([self.label] * len(unique_ids), columns=[self.label_column_name])
-        res_labels = pd.concat(
-            [pd.DataFrame(unique_ids, columns=[self.id_column_name]), res_labels], axis=1
-        )
-        return res_dfs, res_labels
 
-    @count_calls
-    def mask(self, ratio):
         num_rows_to_mask = int(ratio * self.df.shape[0])
         mask_indices = np.random.choice(
             self.df.index, size=num_rows_to_mask, replace=False
