@@ -55,7 +55,7 @@ class Augmentation:
         for i in range(times):
             method_func = getattr(self, method)
             assert method_func is not None, f"Method {method} not found"
-            res_df, label = method_func(method_kwargs)
+            res_df, label = method_func(**method_kwargs)
             if res_df is None and label is None:
                 continue
             else:
@@ -133,40 +133,29 @@ class Augmentation:
             Tuple[pd.DataFrame, pd.DataFrame]: res_dfs, res_labels. res_dfs is all the new sequences, res_labels is the labels of the new sequences: `res_labels[[id_column, label_name]]`, n * 2
         """
         res_dfs = []
-        num_windows = (len(self.df) - window_size) // step_size + 1
+        total_length = len(self.df)
 
-        for i in range(num_windows):
-            start_idx = i * step_size
-            end_idx = start_idx + window_size
-            window_df = self.df.iloc[start_idx:end_idx].copy()
-
+        # Apply sliding window
+        for start in range(0, total_length - window_size + 1, step_size):
+            end = start + window_size
+            window_df = self.df.iloc[start:end].reset_index(drop=True)
             if window_df.empty:
                 continue
-
-            new_id = f"{self.id}_window_{i}"
+            new_id = self.id + f"_{self.call_count}_{start//step_size+1}"
             ids = pd.DataFrame([new_id] * window_df.shape[0], columns=[self.id_column_name])
+            res_df = pd.concat([ids, window_df], axis=1, ignore_index=False)
+            res_dfs.append(res_df)
 
-            # Reset index to align data correctly
-            window_df.reset_index(drop=True, inplace=True)
+        if len(res_dfs) == 0:
+            return None, None
 
-            # Concatenate the id column and the rest of the data
-            window_df = pd.concat([ids, window_df], axis=1)
-
-            # Flatten the DataFrame into a single row
-            row_data = window_df.values.flatten()
-            res_dfs.append(row_data)
-
-        if res_dfs:
-            # Convert the list of rows into a DataFrame
-            res_dfs = pd.DataFrame(res_dfs)
-
-            # Generate labels DataFrame
-            unique_ids = [row[0] for row in res_dfs.values]  # Assuming the id is in the first column
-            res_labels = pd.DataFrame({self.id_column_name: unique_ids, self.label_column_name: self.label})
-
-            return res_dfs, res_labels
-        else:
-            return pd.DataFrame(), pd.DataFrame()
+        res_dfs = pd.concat(res_dfs)
+        unique_ids = res_dfs[self.id_column_name].unique()
+        res_labels = pd.DataFrame([self.label] * len(unique_ids), columns=[self.label_column_name])
+        res_labels = pd.concat(
+            [pd.DataFrame(unique_ids, columns=[self.id_column_name]), res_labels], axis=1
+        )
+        return res_dfs, res_labels
 
 
 if __name__ == "__main__":
@@ -211,7 +200,7 @@ if __name__ == "__main__":
     addition_train_data = []
     addition_train_labels = []
 
-    times = 4
+    times = 1
     ratio_range = 0.1
     window_size = 10  # 设置滑动窗口的大小
     step_size = 5  # 设置滑动窗口的步长
@@ -225,22 +214,24 @@ if __name__ == "__main__":
         # 对正负样本进行平衡 样本比 1:4
         if label == 1:
             res_df, res_labels = aug.times(
-                ratio=ratio_range, times=times * 4,
+                # ratio=ratio_range,
+                times=times * 4,
                 window_size=window_size, step_size=step_size,
-                method="mask"
+                method="sliding_window"
             )
         else:
             res_df, res_labels = aug.times(
-                ratio=ratio_range, times=times,
+                # ratio=ratio_range,
+                times=times,
                 window_size=window_size, step_size=step_size,
-                method="mask"
+                method="sliding_window"
             )
-        addition_train_data.append(res_df)
-        addition_train_labels.append(res_labels)
-        res_df, res_labels = aug.sliding_window(window_size=window_size, step_size=step_size)
-        if not res_df.empty:
+        if res_df is not None and res_labels is not None:
             addition_train_data.append(res_df)
             addition_train_labels.append(res_labels)
+
+
+
             
     addition_train_data = pd.concat(addition_train_data)
     addition_train_labels = pd.concat(addition_train_labels)
