@@ -160,7 +160,7 @@ class Augmentation:
     @count_calls
     def max_pooling(self, window_size: int, step_size: int):
         """
-        Apply max pooling to downsample the time series data.
+        Apply max pooling to downsample the time series data by selecting the most frequent value in each column.
 
         Args:
             window_size (int): The size of the pooling window.
@@ -172,13 +172,14 @@ class Augmentation:
         res_dfs = []
         total_length = len(self.df)
 
-        # Apply max pooling
         for start in range(0, total_length - window_size + 1, step_size):
             end = start + window_size
             window_df = self.df.iloc[start:end]
             if window_df.empty:
                 continue
-            pooled_df = window_df.max().to_frame().T  # Apply max pooling
+
+            # Find the most frequent value in each column
+            pooled_df = window_df.mode().iloc[0].to_frame().T
             new_id = f"{self.id}_{self.call_count}"
             ids = pd.DataFrame([new_id] * pooled_df.shape[0], columns=[self.id_column_name])
             res_df = pd.concat([ids, pooled_df], axis=1, ignore_index=False)
