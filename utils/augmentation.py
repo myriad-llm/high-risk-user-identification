@@ -157,6 +157,44 @@ class Augmentation:
         )
         return res_dfs, res_labels
 
+    @count_calls
+    def max_pooling(self, window_size: int, step_size: int):
+        """
+        Apply max pooling to downsample the time series data.
+
+        Args:
+            window_size (int): The size of the pooling window.
+            step_size (int): The step size for sliding the window.
+
+        Returns:
+            Tuple[pd.DataFrame, pd.DataFrame]: res_dfs, res_labels. res_dfs is all the new sequences, res_labels is the labels of the new sequences: `res_labels[[id_column, label_name]]`, n * 2
+        """
+        res_dfs = []
+        total_length = len(self.df)
+
+        # Apply max pooling
+        for start in range(0, total_length - window_size + 1, step_size):
+            end = start + window_size
+            window_df = self.df.iloc[start:end]
+            if window_df.empty:
+                continue
+            pooled_df = window_df.max().to_frame().T  # Apply max pooling
+            new_id = f"{self.id}_{self.call_count}"
+            ids = pd.DataFrame([new_id] * pooled_df.shape[0], columns=[self.id_column_name])
+            res_df = pd.concat([ids, pooled_df], axis=1, ignore_index=False)
+            res_dfs.append(res_df)
+
+        if len(res_dfs) == 0:
+            return None, None
+
+        res_dfs = pd.concat(res_dfs)
+        unique_ids = res_dfs[self.id_column_name].unique()
+        res_labels = pd.DataFrame([self.label] * len(unique_ids), columns=[self.label_column_name])
+        res_labels = pd.concat(
+            [pd.DataFrame(unique_ids, columns=[self.id_column_name]), res_labels], axis=1
+        )
+        return res_dfs, res_labels
+
 
 if __name__ == "__main__":
     from tqdm import tqdm
@@ -217,14 +255,14 @@ if __name__ == "__main__":
                 # ratio=ratio_range,
                 times=times * 4,
                 window_size=window_size, step_size=step_size,
-                method="sliding_window"
+                method="max_pooling"
             )
         else:
             res_df, res_labels = aug.times(
                 # ratio=ratio_range,
                 times=times,
                 window_size=window_size, step_size=step_size,
-                method="sliding_window"
+                method="max_pooling"
             )
         if res_df is not None and res_labels is not None:
             addition_train_data.append(res_df)
