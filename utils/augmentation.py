@@ -40,12 +40,9 @@ class Augmentation:
         """
 
         Args:
-            ratio (Union[float, List[float], Tuple[float, float]]): if `ratio` is a list, then randomly choose a ratio from the list. if `ratio` is a number, then the ratio is the same every time. if `ratio` is a tuple, then randomly choose a ratio between ratio[0] and ratio[1]
             times (int): The new sequence's number
             method (str): The method name, must be same as the method name in the class
-
-        Raises:
-            ValueError: if ratio is not a valid type of float, list, tuple
+            method_kwargs: The method's kwargs
 
         Returns:
             Tuple[pd.DataFrame, pd.DataFrame]: res_dfs, res_labels. res_dfs is all the new sequences, res_labels is the labels of the new sequences: `res_labels[[id_column, label_name]]`, n * 2
@@ -73,7 +70,19 @@ class Augmentation:
         return res_dfs, res_labels
 
     @count_calls
-    def mask(self, ratio):
+    def mask(self, ratio)-> Tuple[pd.DataFrame, int]:
+        """
+
+        Args:
+            ratio (Union[float, List[float], Tuple[float, float]]): if `ratio` is a list, then randomly choose a ratio from the list. if `ratio` is a number, then the ratio is the same every time. if `ratio` is a tuple, then randomly choose a ratio between ratio[0] and ratio[1]
+
+
+        Raises:
+            ValueError: if ratio is not a valid type of float, list, tuple
+
+        Returns:
+            Tuple[pd.DataFrame, str]: res_df, label. res_df is the new sequence, id is the first col of res_df, label is the label of the new sequence.
+        """
         if type(ratio) == list:
             ratio = np.random.choice(ratio)
         elif type(ratio) == tuple:
@@ -100,14 +109,13 @@ class Augmentation:
     @count_calls
     def interpolation(self, label, ratio):
         """
-        随机插入比例为 ratio 的行
+        Randomly insert rows with a ratio of ratio
         """
         pass
 
     @count_calls
     def noise(self, label, ratio):
         """
-        为数值类型变量 原值乘以 [1-ratio, 1+ratio] 的随机因子
         """
         # for col in self.df.columns:
         #     if col in self.numeric_columns:
