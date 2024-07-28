@@ -16,10 +16,11 @@ trainer:
         monitor: "val_loss"
         mode: "min"
         save_top_k: 10
+        save_last: true
         filename: "{epoch}-{val_loss:.3f}"
         verbose: false
     - class_path: callbacks.AEPredictionWriter
-      init_args:
+      init_args: 
         output_dir: "./predictions/${trainer.logger.init_args.project}"
         write_interval: "epoch"
 model:
@@ -34,6 +35,7 @@ model:
     output_dim1_d: ${model.init_args.encoded_dim}
     decoded_dim: ${model.init_args.input_size}
     mask_rate: 0.1
+    embeddings_weights_path: "wandb/tlstm_autoencoder_mmd/tlstm_autoencoder_mmd/iinjituk/checkpoints/epoch=18-val_loss=0.150.ckpt"
     optimizer:
       class_path: torch.optim.AdamW
       init_args:

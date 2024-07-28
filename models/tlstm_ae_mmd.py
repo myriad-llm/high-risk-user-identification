@@ -3,16 +3,10 @@ import torch.nn as nn
 import lightning as L
 import torch.nn.functional as F
 from lightning.pytorch.utilities.types import STEP_OUTPUT
-from torchmetrics.classification import (
-    BinaryAccuracy,
-    BinaryPrecision,
-    BinaryRecall,
-    BinaryF1Score,
-)
-from torchmetrics.collections import MetricCollection
 from torch.optim import Optimizer
 from typing import Callable, Iterable
 from .common import CallRecordsEmbeddings
+import pickle
 
 OptimizerCallable = Callable[[Iterable], Optimizer]
 
@@ -181,16 +175,29 @@ class TimeLSTMAutoEncoder_MMD(L.LightningModule):
         hidden_dim2_d: int,
         output_dim1_d: int,
         decoded_dim: int,
+        embeddings_weights_path: str,
         mask_rate: float = 0.1,
         optimizer: OptimizerCallable = torch.optim.Adam,
         mmd_weight: float = 0.05  # Weight for the MMD loss
     ):
         super().__init__()
         self.save_hyperparameters()
-        self.optimizer = optimizer
 
+        self.optimizer = optimizer
         self.mask_rate = mask_rate
         self.embeddings = CallRecordsEmbeddings(input_size=input_size, embedding_items_path=embedding_items_path)
+
+        # pretrained embeddings
+        if embeddings_weights_path:
+            # checkpoint = torch.load(embeddings_weights_path)
+            # embeddings_weights = {k: v for k, v in checkpoint['state_dict'].items() if k.startswith("embeddings.embeddings.")} # for CallRecordsEmbeddings's artribute also has a name "embeddings", so we need to get embeddings.embeddings
+            # # delete the prefix "embeddings." in the embeddings weights, just remove the first "embeddings."
+            # embeddings_weights = {k.replace("embeddings.", "", 1): v for k, v in embeddings_weights.items()}
+            # pickle.dump(embeddings_weights, open('embeddings_weights.pkl', 'wb'))
+            # self.embeddings = self.embeddings.load_state_dict(embeddings_weights)
+            # TODO: load the pretrained embeddings weights
+            pass
+
         self.encoder = TLSTM_Encoder(
             in_channels=input_size,
             hidden_dim1=hidden_dim1_e,
@@ -260,7 +267,7 @@ class TimeLSTMAutoEncoder_MMD(L.LightningModule):
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         x, time_diffs, _, msisdns, seq_lens = batch
         representation, outputs, x = self(x, time_diffs, seq_lens, mask=False)
-        return representation, msisdns
+        return representation, msisdns, (x, seq_lens)
 
     def configure_optimizers(self):
         return self.optimizer(self.parameters())

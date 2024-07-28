@@ -12,6 +12,7 @@ from tqdm import tqdm
 from utils import *
 from utils.augmentation import Augmentation
 from utils.dataclass import EmbeddingItem
+import json
 
 
 @dataclass
@@ -308,6 +309,10 @@ class CallRecordsAug(Dataset):
                 for col in self.categorical_columns
             }
         )
+
+        os.makedirs(self.processed_folder, exist_ok=True)
+        with open(os.path.join(self.processed_folder, "value_dicts.json"), "w") as f:
+            json.dump(value_dicts, f)
 
         train_records_df = remap_data(train_records_df, remap_column_group, value_dicts)
         val_records_df = remap_data(val_records_df, remap_column_group, value_dicts)
