@@ -151,6 +151,11 @@ The hyperparameters optimization use the bayesian optimization algorithm.
 python main_embedding_opt.py --config ./configs/<name>.yaml
 ```
 
+Before running the above command, you need to:
+
+1. Remove the `ckpt_path` in the config file.
+2. Modify the `objective` function in the `main_embedding_opt.py` file to fit your model.
+
 Basic `config` file is still read from the `yaml` file, and the hyperparameter search range is defined in the `objective` function in the `main_embedding_opt.py` file. The settings in `objective` will override the settings in the `config` file. If you want to change the hyperparameter search range to fit your model, you can modify the `objective` function in the `main_embedding_opt.py` file like this:
 
 ```python
