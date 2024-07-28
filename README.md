@@ -140,3 +140,43 @@ ps: [Models and DataModules](#models-and-datamodules) just mentioned that `input
 
 1. Change `ckpt_path` in the config file to the checkpoint you want to use.
 2. Run `python main.py predict --config ./configs/<name>.yaml`
+
+### Hyperparameter Tuning
+
+use the `Optuna` library to tune hyperparameters [Optuna](https://optuna.org/).
+
+The hyperparameters optimization use the bayesian optimization algorithm.
+
+```shell
+python main_embedding_opt.py --config ./configs/<name>.yaml
+```
+
+Basic `config` file is still read from the `yaml` file, and the hyperparameter search range is defined in the `objective` function in the `main_embedding_opt.py` file. The settings in `objective` will override the settings in the `config` file. If you want to change the hyperparameter search range to fit your model, you can modify the `objective` function in the `main_embedding_opt.py` file like this:
+
+```python
+hidden_dim = trial.suggest_categorical("hidden_dim", [2, 4, 8, 16, 32, 64])
+num_layers = trial.suggest_categorical("num_layers", [1, 2, 3])
+batch_size = trial.suggest_categorical("batch_size", [64, 128, 256, 512])
+lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+max_epochs = 150
+
+cli_update = {
+    "data": {
+        "init_args": {
+            "batch_size": batch_size,
+        }
+    },
+    "model": {
+        "init_args": {
+            "hidden_size": hidden_dim,
+            "num_layers": num_layers,
+            "optimizer": {"init_args": {"lr": lr}},
+        }
+    },
+    "trainer": {"max_epochs": max_epochs},
+}
+```
+
+- [ ] Make the setting of hyperparameter range in `objective` bind to the model, so that the setting of hyperparameters is more flexible.
+
+ps: Now, the `objective` function is just for `lstm` model as an example. Don't commit the changed `main_embedding_opt.py` file to the repository.

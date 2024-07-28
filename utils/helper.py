@@ -9,6 +9,7 @@ from sklearn.preprocessing import MinMaxScaler
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 from .augmentation import Augmentation
+from jsonargparse import Namespace
 
 def generate_value_dict(
     columns: list[str], data: pd.DataFrame, valid: pd.DataFrame
@@ -202,3 +203,9 @@ def augment(train_data, train_labels, ratio_range, times):
     train_labels.sort_values(by=["msisdn"]).reset_index(drop=True)
 
     return train_data, train_labels
+
+
+def convert_to_namespace(d):
+        if isinstance(d, dict):
+            return Namespace(**{k: convert_to_namespace(v) for k, v in d.items()})
+        return d

@@ -10,6 +10,7 @@ from .helper import (
     examine_data,
     add_static_features,
     augment,
+    convert_to_namespace,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "examine_data",
     "add_static_features",
     "augment",
+    "convert_to_namespace",
 ]

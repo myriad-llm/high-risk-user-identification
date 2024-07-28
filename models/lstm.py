@@ -6,13 +6,18 @@ from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torchmetrics.classification import BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score
 from torchmetrics.collections import MetricCollection
 from models.common import CallRecordsEmbeddings
+from torch.optim import AdamW
+from typing import Callable, Iterable
+from torch.optim import Optimizer
 
+OptimizerCallable = Callable[[Iterable], Optimizer]
 
 class LSTM(L.LightningModule):
-    def __init__(self, input_size, hidden_size, num_layers, num_classes, embedding_items_path):
+    def __init__(self, input_size, hidden_size, num_layers, num_classes, embedding_items_path, optimizer: OptimizerCallable=AdamW):
         super().__init__()
         self.save_hyperparameters()
 
+        self.optimizer = optimizer
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.embedding = CallRecordsEmbeddings(embedding_items_path, input_size=input_size)
@@ -85,8 +90,10 @@ class LSTM(L.LightningModule):
         self.valid_metrics.reset()
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
+        optim = self.optimizer(
+            self.parameters(),
+        )
+        return optim
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         seqs, _, _, msisdns, seq_lens = batch

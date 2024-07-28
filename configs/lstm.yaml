@@ -1,6 +1,6 @@
 # lightning.pytorch==2.3.1
 seed_everything: 123
-ckpt_path: null
+# ckpt_path: null
 trainer:
   logger:
     class_path: lightning.pytorch.loggers.WandbLogger
@@ -18,10 +18,22 @@ trainer:
         save_top_k: 10
         filename: "{epoch}-{valid_BinaryF1Score:.3f}"
         verbose: false
+        save_last: true
     - class_path: callbacks.LSTMPredictionWriter
       init_args:
         output_dir: "./predictions/${trainer.logger.init_args.project}"
         write_interval: "epoch"
+model:
+  class_path: models.LSTM
+  init_args:
+    hidden_size: 32
+    num_layers: 2
+    num_classes: 2
+    optimizer:
+      class_path: torch.optim.AdamW
+      init_args:
+        lr: 1e-4
+        weight_decay: 0.01
 data:
   class_path: datasets.aug.CallRecordsAugDataModule
   init_args:
@@ -33,9 +45,3 @@ data:
     mask_rate: 0.0
     aug_ratio: 0.0
     aug_times: 0
-model:
-  class_path: models.LSTM
-  init_args:
-    hidden_size: 32
-    num_layers: 2
-    num_classes: 2
