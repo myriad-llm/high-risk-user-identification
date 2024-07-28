@@ -147,11 +147,7 @@ use the `Optuna` library to tune hyperparameters [Optuna](https://optuna.org/).
 
 The hyperparameters optimization use the bayesian optimization algorithm.
 
-```shell
-python main_embedding_opt.py --config ./configs/<name>.yaml
-```
-
-Before running the above command, you need to:
+Before running the following command, you need to:
 
 1. Remove the `ckpt_path` in the config file.
 2. Modify the `objective` function in the `main_embedding_opt.py` file to fit your model.
@@ -184,4 +180,35 @@ cli_update = {
 
 - [ ] Make the setting of hyperparameter range in `objective` bind to the model, so that the setting of hyperparameters is more flexible.
 
-ps: Now, the `objective` function is just for `lstm` model as an example. Don't commit the changed `main_embedding_opt.py` file to the repository.
+#### With embedding module
+
+```shell
+python main_embedding_opt.py --config ./configs/<name>.yaml
+```
+
+ps: Now, the `objective` function in `main_embedding_opt.py` is just for `lstm` model as an example. Don't commit the changed `main_embedding_opt.py` file to the repository.
+
+#### Without embedding module
+
+Compared to `main_embedding_opt.py`:
+
+1. Has a feature of `PyTorchLightningPruningCallback`. 
+2. Facing error when fitting the model with some hyperparameters will not lead to the termination of the whole process.
+
+```shell
+python main_opt.py --config ./configs/<name>.yaml
+```
+
+Must modify your model like `bert_cls` to support `PyTorchLightningPruningCallback`:
+
+```python
+    def configure_callbacks(self):
+        if self.callbacks:
+            return self.callbacks
+        return []
+    
+    def set_callbacks(self, callbacks) -> None:
+        self.callbacks = callbacks
+```
+
+ps: Now, the `objective` function in `main_opt.py` is just for `bert_cls` model as an example. Don't commit the changed `main_opt.py` file to the repository.
