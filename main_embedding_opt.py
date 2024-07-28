@@ -54,8 +54,6 @@ class MyLightningCLI(LightningCLI):
             raise KeyError(
                 "Attribution 'embedding_items_path' not found in datamodule, you must implement it in datamodule"
             )
-        # 释放 logger
-        self.logger = None
         return super().instantiate_classes()
 
 

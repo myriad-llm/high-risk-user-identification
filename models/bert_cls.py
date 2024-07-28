@@ -14,6 +14,10 @@ from torchmetrics.collections import MetricCollection
 from transformers import BertConfig, BertForSequenceClassification
 from transformers.modeling_outputs import SequenceClassifierOutput
 
+from typing import Callable, Iterable
+from torch.optim import Optimizer
+
+OptimizerCallable = Callable[[Iterable], Optimizer]
 
 class BertClassification(L.LightningModule):
     def __init__(
@@ -23,10 +27,13 @@ class BertClassification(L.LightningModule):
         hidden_size: int,
         num_hidden_layers: int = 12,
         num_classes: int = 2,
+        dropout_rate: float = 0.1,
+        optimizer: OptimizerCallable = torch.optim.AdamW, 
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
 
+        self.optimizer = optimizer
         self.num_classes = num_classes
         self.model = BertForSequenceClassification(
             BertConfig(
@@ -35,6 +42,7 @@ class BertClassification(L.LightningModule):
                 num_hidden_layers=num_hidden_layers,
                 num_attention_heads=input_size,
                 num_labels=num_classes,
+                classifier_dropout=dropout_rate,
             )
         )
 
@@ -48,6 +56,7 @@ class BertClassification(L.LightningModule):
         )
         self.train_metrics = metrics.clone(prefix="train-")
         self.valid_metrics = metrics.clone(prefix="val-")
+        self.callbacks = None
 
     def training_step(self, batch, batch_idx) -> Tensor:
         labels = (batch["labels"][:, 0] == 1).long().to(self.device)
@@ -109,5 +118,13 @@ class BertClassification(L.LightningModule):
         return predicted_labels, msisdns
 
     def configure_optimizers(self) -> OptimizerLRScheduler:
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5, weight_decay=0.01)
+        optimizer = self.optimizer(self.parameters())
         return optimizer
+    
+    def configure_callbacks(self):
+        if self.callbacks:
+            return self.callbacks
+        return []
+    
+    def set_callbacks(self, callbacks) -> None:
+        self.callbacks = callbacks
