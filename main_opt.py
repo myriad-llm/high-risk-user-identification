@@ -68,7 +68,7 @@ def objective(trial: optuna.trial.Trial) -> float:
         trial.set_user_attr("stride", stride)
 
         # trainer
-        max_epochs = 5
+        max_epochs = trial.suggest_int("max_epochs", 1, 20)
 
         cli_update = {
             "data": {
@@ -130,7 +130,7 @@ def objective(trial: optuna.trial.Trial) -> float:
 
 if __name__ == "__main__":
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=20)
+    study.optimize(objective, n_trials=50)
 
     print("Number of finished trials: ", len(study.trials))
 
