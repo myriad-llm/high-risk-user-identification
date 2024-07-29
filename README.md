@@ -143,7 +143,7 @@ ps: [Models and DataModules](#models-and-datamodules) just mentioned that `input
 
 ### Hyperparameter Tuning
 
-use the `Optuna` library to tune hyperparameters [Optuna](https://optuna.org/).
+Use the [Optuna](https://optuna.org/) library to tune hyperparameters.
 
 The hyperparameters optimization use the bayesian optimization algorithm.
 
