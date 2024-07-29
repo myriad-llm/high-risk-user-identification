@@ -26,7 +26,7 @@ trainer:
     - class_path: lightning.pytorch.callbacks.EarlyStopping
       init_args:
         monitor: "valid_BinaryF1Score"
-        mode: "min"
+        mode: "max"
         patience: 10
 model:
   class_path: models.LSTM
