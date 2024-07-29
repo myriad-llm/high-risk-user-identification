@@ -6,6 +6,7 @@ import optuna
 from jsonargparse import Namespace
 import wandb
 from callbacks import PyTorchLightningPruningCallback
+import yaml
 
 torch.set_float32_matmul_precision("medium")
 
@@ -132,3 +133,6 @@ if __name__ == "__main__":
     print("  Params: ")
     for key, value in trial.params.items():
         print("    {}: {}".format(key, value))
+
+    with open("best_params.yaml", "w") as f:
+        yaml.dump(trial.params, f)
