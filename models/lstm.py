@@ -33,6 +33,7 @@ class LSTM(L.LightningModule):
         )
         self.train_metrics = metrics.clone(prefix="train_")
         self.valid_metrics = metrics.clone(prefix="valid_")
+        self.callbacks = None
 
     def forward(self, x, seq_lens):
         # inputs: [b, seq, embed]
@@ -102,3 +103,11 @@ class LSTM(L.LightningModule):
             dim=1,
         )
         return outputs, msisdns
+
+    def configure_callbacks(self):
+        if self.callbacks:
+            return self.callbacks
+        return []
+    
+    def set_callbacks(self, callbacks) -> None:
+        self.callbacks = callbacks 

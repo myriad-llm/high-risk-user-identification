@@ -86,6 +86,7 @@ class TimeLSTM(L.LightningModule):
         super().__init__()
         self.save_hyperparameters()
         self.optimizer = optimizer
+        self.callbacks = None
 
         self.hidden_size = hidden_size
         self.input_size = input_size
@@ -232,3 +233,11 @@ class TimeLSTM(L.LightningModule):
         seq_lens_expanded = seq_lens.unsqueeze(1).to(self.device)  # [b, 1]
         padding_mask = seq_range >= seq_lens_expanded  # [b, seq]
         return padding_mask
+    
+    def configure_callbacks(self):
+        if self.callbacks:
+            return self.callbacks
+        return []
+    
+    def set_callbacks(self, callbacks) -> None:
+        self.callbacks = callbacks 

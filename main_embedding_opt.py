@@ -5,6 +5,7 @@ from lightning.pytorch.cli import LightningCLI
 import optuna
 from jsonargparse import Namespace
 import wandb
+from callbacks import PyTorchLightningPruningCallback
 
 torch.set_float32_matmul_precision("medium")
 
@@ -58,60 +59,68 @@ class MyLightningCLI(LightningCLI):
 
 
 def objective(trial: optuna.trial.Trial) -> float:
-    hidden_dim = trial.suggest_categorical("hidden_dim", [2, 4, 8, 16, 32, 64])
-    num_layers = trial.suggest_categorical("num_layers", [1, 2, 3])
-    batch_size = trial.suggest_categorical("batch_size", [64, 128, 256, 512])
-    lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
-    max_epochs = 150
-
-    cli_update = {
-        "data": {
-            "init_args": {
-                "batch_size": batch_size,
-            }
-        },
-        "model": {
-            "init_args": {
-                "hidden_size": hidden_dim,
-                "num_layers": num_layers,
-                "optimizer": {"init_args": {"lr": lr}},
-            }
-        },
-        "trainer": {"max_epochs": max_epochs},
-    }
-
-    def _convert_to_namespace(d):
-        if isinstance(d, dict):
-            return Namespace(**{k: _convert_to_namespace(v) for k, v in d.items()})
-        return d
-
-    cli_update = _convert_to_namespace(cli_update)
-
-    # HACK: not valid for all logger
-    # this is must when you use wandb logger，otherwise the optuna will use the same wandb run during the optimization.
-    wandb.finish()
-
-    # HACK: there is a problem, datamodule will be instantiated per execution. 
-    # And the cache function in datamodule will cause the result that hyperparameter updates to the datamodule have no effect.
-    cli = MyLightningCLI(
-        save_config_kwargs={"overwrite": True},
-        parser_kwargs={"parser_mode": "omegaconf"},
-        run=False,
-        update_config=cli_update,
-    )
-    # after instantiation, the config.data will be instantiated as cli.datamodule
-
-    trainer, model, datamodule = cli.trainer, cli.model, cli.datamodule
-    trainer.fit(model, datamodule=datamodule)
-
     monitor = "valid_BinaryF1Score"
 
-    return trainer.callback_metrics[monitor].item()
+    try:
+        hidden_dim = trial.suggest_categorical("hidden_dim", [2, 4, 8, 16, 32, 64])
+        num_layers = trial.suggest_categorical("num_layers", [1, 2, 3])
+        batch_size = trial.suggest_categorical("batch_size", [64, 128, 256, 512])
+        lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+        max_epochs = 150
+
+        cli_update = {
+            "data": {
+                "init_args": {
+                    "batch_size": batch_size,
+                }
+            },
+            "model": {
+                "init_args": {
+                    "hidden_size": hidden_dim,
+                    "num_layers": num_layers,
+                    "optimizer": {"init_args": {"lr": lr}},
+                }
+            },
+            "trainer": {"max_epochs": max_epochs},
+        }
+
+        def _convert_to_namespace(d):
+            if isinstance(d, dict):
+                return Namespace(**{k: _convert_to_namespace(v) for k, v in d.items()})
+            return d
+
+        cli_update = _convert_to_namespace(cli_update)
+
+        # HACK: not valid for all logger
+        # this is must when you use wandb logger，otherwise the optuna will use the same wandb run during the optimization.
+        wandb.finish()
+
+        # HACK: there is a problem, datamodule will be instantiated per execution. 
+        # And the cache function in datamodule will cause the result that hyperparameter updates to the datamodule have no effect.
+        cli = MyLightningCLI(
+            save_config_kwargs={"overwrite": True},
+            parser_kwargs={"parser_mode": "omegaconf"},
+            run=False,
+            update_config=cli_update,
+        )
+        # after instantiation, the config.data will be instantiated as cli.datamodule
+
+        trainer, model, datamodule = cli.trainer, cli.model, cli.datamodule
+
+        # add pruning callback
+        model.set_callbacks([PyTorchLightningPruningCallback(trial, monitor=monitor)])
+
+        trainer.fit(model, datamodule=datamodule)
+
+        return trainer.callback_metrics[monitor].item()
+    except Exception as e:
+        print(f"Trial failed with exception: {e}")
+        return float("-inf")
 
 
 if __name__ == "__main__":
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=2)
+    study.optimize(objective, n_trials=50)
 
     print("Number of finished trials: ", len(study.trials))
 
